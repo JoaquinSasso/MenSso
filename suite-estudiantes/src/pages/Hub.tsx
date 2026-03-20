@@ -6,6 +6,7 @@ import {
 	Binary,
 	Code2,
 	ChevronRight,
+	Hash,
 } from "lucide-react";
 
 // Definimos el tipo de datos para nuestras herramientas
@@ -54,6 +55,15 @@ const tools: ToolCard[] = [
 		path: "/automatas/simulador",
 		category: "Teoría de la Computación",
 		color: "text-amber-400",
+	},
+	{
+		title: "Conversor de Bases",
+		description:
+			"Convertí entre binario, decimal y hexadecimal viendo el proceso completo: divisiones, restos y agrupaciones paso a paso.",
+		icon: Hash,
+		path: "/efc/conversor-bases",
+		category: "Estructuras y Func. de Computadoras",
+		color: "text-rose-400",
 	},
 ];
 
