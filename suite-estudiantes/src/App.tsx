@@ -1,16 +1,32 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Hub from "./pages/Hub";
+import EnConstruccion from "./pages/EnConstruccion";
+
 function App() {
 	return (
 		<BrowserRouter>
 			<Routes>
-				{/* El Layout envuelve a todas las páginas para que siempre tengan Navbar */}
 				<Route path="/" element={<Layout />}>
 					<Route index element={<Hub />} />
-					{/* <Route path="redes/click" element={<ViajeClick />} /> */}
-					{/* <Route path="db/er-sql" element={<ERtoSQL />} /> */}
-					{/* Aquí irán sumando más rutas tu compañero y tú */}
+
+					{/* Redes */}
+					<Route path="redes/click" element={<EnConstruccion />} />
+
+					{/* Bases de Datos */}
+					<Route path="db/er-sql" element={<EnConstruccion />} />
+
+					{/* Sistemas Operativos */}
+					<Route path="so/planificador" element={<EnConstruccion />} />
+
+					{/* Teoría de la Computación */}
+					<Route path="automatas/simulador" element={<EnConstruccion />} />
+
+					{/* Estructuras y Funcionamiento de Computadoras */}
+					<Route path="efc/calculadora-binaria" element={<EnConstruccion />} />
+
+					{/* Ruta comodín: cualquier otra URL vuelve al Hub */}
+					<Route path="*" element={<Hub />} />
 				</Route>
 			</Routes>
 		</BrowserRouter>

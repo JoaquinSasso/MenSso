@@ -5,7 +5,6 @@ import {
 	Cpu,
 	Binary,
 	Code2,
-	FileText,
 	ChevronRight,
 } from "lucide-react";
 
