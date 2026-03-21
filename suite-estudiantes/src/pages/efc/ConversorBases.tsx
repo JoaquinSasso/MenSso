@@ -64,9 +64,9 @@ const BASE_LABELS: Record<Base, string> = {
 };
 
 const BASE_PREFIXES: Record<Base, string> = {
-	bin: "0b",
+	bin: "",
 	dec: "",
-	hex: "0x",
+	hex: "",
 };
 
 const HEX_DIGITS = "0123456789ABCDEF";
