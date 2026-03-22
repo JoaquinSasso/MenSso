@@ -7,6 +7,7 @@ import {
 	Code2,
 	ChevronRight,
 	Hash,
+	Calculator,
 } from "lucide-react";
 
 // Definimos el tipo de datos para nuestras herramientas
@@ -28,6 +29,15 @@ const tools: ToolCard[] = [
 		path: "/redes/click",
 		category: "Redes de Datos",
 		color: "text-sky-400",
+	},
+	{
+		title: "Subneteo IPv4",
+		description:
+			"Calculá subredes, máscaras, direcciones de broadcast y rangos de hosts válidos con explicaciones paso a paso.",
+		icon: Calculator,
+		path: "/redes/subneteo",
+		category: "Redes de Datos",
+		color: "text-indigo-400",
 	},
 	{
 		title: "Modelo E/R a SQL",

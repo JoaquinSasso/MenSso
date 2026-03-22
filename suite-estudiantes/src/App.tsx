@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import Hub from "./pages/Hub";
 import EnConstruccion from "./pages/EnConstruccion";
 import ConversorBases from "./pages/efc/ConversorBases";
+import Subneteo from "./pages/redes/subneteo";
 
 function App() {
 	return (
@@ -13,6 +14,7 @@ function App() {
 
 					{/* Redes */}
 					<Route path="redes/click" element={<EnConstruccion />} />
+					<Route path="redes/subneteo" element={<Subneteo/>} />
 
 					{/* Bases de Datos */}
 					<Route path="db/er-sql" element={<EnConstruccion />} />
