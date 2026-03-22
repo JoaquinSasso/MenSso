@@ -73,7 +73,7 @@ function generateSubnetSteps(ipParts: number[], cidrNum: number): SubnetStep[] {
 
 	steps.push({
 		title: "4. Dirección de Broadcast (Operación OR)",
-		description: "La MÁSC. INV (Máscara Invertida o Wildcard) se obtiene cambiando los '1' de la máscara por '0', y los '0' por '1'. Para calcular el Broadcast, aplicamos un OR lógico entre la IP y esta Máscara Invertida. Hacer un OR con los '1' de la wildcard fuerza a que todos los bits de la porción de host se enciendan, dándonos la última dirección posible de la subred.",
+		description: "La Máscara Invertida se obtiene cambiando los '1' de la máscara por '0', y los '0' por '1'. Para calcular la dirección de Broadcast, aplicamos la compuerta lógica OR bit a bit entre la IP y esta Máscara Invertida. Esto fuerza a que todos los bits de la porción de host se conviertan en '1', dándonos la última dirección posible de la subred.",
 		type: "broadcast",
 		data: {
 			ipBin,
@@ -352,14 +352,14 @@ export default function Subneteo() {
 							)}
 
 							{(step.type === "network" || step.type === "broadcast") && (
-								<div className="bg-slate-950 p-6 rounded-xl border border-slate-800 font-mono text-sm md:text-lg w-full max-w-lg">
-									<div className="flex justify-between text-slate-400">
+								<div className="bg-slate-950 p-6 rounded-xl border border-slate-800 font-mono text-sm md:text-lg w-full max-w-xl">
+									<div className="flex justify-between gap-4 text-slate-400">
 										<span>IP</span>
-										<span className="text-sky-400 tracking-wider">{step.data.ipBin.join(".")}</span>
+										<span className="text-sky-400 tracking-wider text-right">{step.data.ipBin.join(".")}</span>
 									</div>
-									<div className="flex justify-between text-slate-400 mt-2">
+									<div className="flex justify-between gap-4 text-slate-400 mt-2">
 										<span>{step.type === "network" ? "MÁSCARA" : "MÁSC. INV"}</span>
-										<span className="text-amber-400 tracking-wider">
+										<span className="text-amber-400 tracking-wider text-right">
 											{step.type === "network" ? step.data.maskBin.join(".") : step.data.invMaskBin.join(".")}
 										</span>
 									</div>
@@ -368,11 +368,11 @@ export default function Subneteo() {
 											{step.type === "network" ? "AND LÓGICO" : "OR LÓGICO"}
 										</span>
 									</div>
-									<div className="flex justify-between font-bold">
+									<div className="flex justify-between gap-4 font-bold">
 										<span className={step.type === "network" ? "text-emerald-400" : "text-rose-400"}>
 											{step.type === "network" ? "RED" : "BROADCAST"}
 										</span>
-										<span className={`tracking-wider ${step.type === "network" ? "text-emerald-400" : "text-rose-400"}`}>
+										<span className={`tracking-wider text-right ${step.type === "network" ? "text-emerald-400" : "text-rose-400"}`}>
 											{step.type === "network" ? step.data.netBin.join(".") : step.data.broadcastBin.join(".")}
 										</span>
 									</div>
@@ -438,11 +438,12 @@ export default function Subneteo() {
 									</button>
 								)}
 								<button 
-									onClick={isLastStep ? handleReset : goNext} 
-									className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors bg-sky-600 hover:bg-sky-500 text-white"
+									onClick={goNext} 
+									disabled={isLastStep}
+									className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-500 text-white"
 								>
-									{isLastStep ? "Nueva consulta" : "Siguiente"} 
-									{isLastStep ? <RotateCcw size={16} /> : <ArrowRight size={16} />}
+									Siguiente 
+									<ArrowRight size={16} />
 								</button>
 							</div>
 						</div>
