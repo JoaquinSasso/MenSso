@@ -9,7 +9,8 @@ import {
 	Hash,
 	Calculator,
 	Camera,
-	ListOrdered
+	ListOrdered,
+	BoxSelect,
 } from "lucide-react";
 
 // Definimos el tipo de datos para nuestras herramientas
@@ -94,6 +95,15 @@ const tools: ToolCard[] = [
 		path: "/ayrp/simulador-arreglos",
 		category: "Algoritmos y Res. de Problemas",
 		color: "text-teal-400",
+	},
+	{
+		title: "Diagrama de Clases UML",
+		description:
+			"Diseñá diagramas de clases UML con drag & drop y obtené el código Python generado con constructores, getters/setters y herencia.",
+		icon: BoxSelect,
+		path: "/poo/diagrama-clases",
+		category: "Programación Orientada a Objetos",
+		color: "text-indigo-400",
 	},
 ];
 

@@ -20,7 +20,7 @@ Simulador de administración de memoria (paradigmas)
 
 Herramienta para crear bases de datos con el modelo entidad / relación (que luego entregue el modelo lógico y la base de datos en SQL)
 
-Herramienta para graficar diagramas de clases (poo) que luego genere el codigo base de las clases 
+Herramienta para graficar diagramas de clases (poo) que luego genere el codigo base de las clases
 
 Generador de funciones de transición para autómatas finitos (que a partir del grafos y una palabra de todas las transiciones)
 
@@ -34,4 +34,4 @@ Simualdor de instrucciones en procesador (Estructuras de datos y funcionamiento 
 
 Calculadora de Subneteo (COMPLETADO)✅
 
-Simulador de arreglos, busquedas, ordenamientos, etc (para algoritmos y resolucion de problemas)
+Simulador de arreglos, busquedas, ordenamientos, etc (para algoritmos y resolucion de problemas) (COMPLETADO)✅

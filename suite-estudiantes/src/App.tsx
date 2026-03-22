@@ -7,6 +7,7 @@ import Subneteo from "./pages/redes/subneteo";
 import PlanificadorCPU from "./pages/so/PlanificadorCPU";
 import SimuladorArreglos from "./pages/AyRP/SimuladorArreglos";
 import Compilador from "./pages/AyRP/compilador";
+import DiagramaClases from "./pages/poo/DiagramaClases";
 
 function App() {
 	return (
@@ -39,6 +40,9 @@ function App() {
 
 					{/* Ruta comodín: cualquier otra URL vuelve al Hub */}
 					<Route path="*" element={<Hub />} />
+
+					{/*Programacion orientada a objetos */}
+					<Route path="poo/diagrama-clases" element={<DiagramaClases />} />
 				</Route>
 			</Routes>
 		</BrowserRouter>
