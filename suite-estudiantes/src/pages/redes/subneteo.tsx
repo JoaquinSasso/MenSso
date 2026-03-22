@@ -117,8 +117,8 @@ function generateSubnetSteps(ipParts: number[], cidrNum: number): SubnetStep[] {
 }
 
 export default function Subneteo() {
-	const [ip, setIp] = useState("192.168.1.0");
-	const [cidr, setCidr] = useState("24");
+	const [ip, setIp] = useState("");
+	const [cidr, setCidr] = useState("");
 	const [steps, setSteps] = useState<SubnetStep[]>([]);
 	const [currentStep, setCurrentStep] = useState(0);
 	const [isCalculated, setIsCalculated] = useState(false);
@@ -164,6 +164,11 @@ export default function Subneteo() {
 		setError("");
 		setIsCalculated(false);
 
+		if (!ip.trim() || !cidr.trim()) {
+			setError("Por favor, ingresá una dirección IP y un prefijo CIDR.");
+			return;
+		}
+
 		const cidrNum = parseInt(cidr, 10);
 		if (isNaN(cidrNum) || cidrNum < 0 || cidrNum > 32) {
 			setError("El prefijo CIDR debe ser un número entre 0 y 32.");
@@ -190,6 +195,8 @@ export default function Subneteo() {
 	}
 
 	function handleReset() {
+		setIp("");
+		setCidr("");
 		setSteps([]);
 		setCurrentStep(0);
 		setIsCalculated(false);
@@ -231,7 +238,7 @@ export default function Subneteo() {
 								if (isCalculated) setIsCalculated(false);
 							}}
 							onKeyDown={(e) => e.key === "Enter" && handleCalculate()}
-							placeholder="Ej: 192.168.1.10"
+							placeholder="Ej: 192.168.1.0"
 							className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 font-mono text-lg placeholder:text-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
 						/>
 					</div>
@@ -253,6 +260,7 @@ export default function Subneteo() {
 								onKeyDown={(e) => e.key === "Enter" && handleCalculate()}
 								min="0"
 								max="32"
+								placeholder="24"
 								className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-4 py-3 font-mono text-lg placeholder:text-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
 							/>
 						</div>
