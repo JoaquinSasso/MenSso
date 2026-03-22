@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
 	ArrowLeft,
@@ -7,6 +7,8 @@ import {
 	RotateCcw,
 	ChevronLeft,
 	Play,
+	SkipForward,
+	Keyboard,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────
@@ -20,7 +22,7 @@ interface DivisionStepData {
 	divisor: number;
 	quotient: number;
 	remainder: number;
-	remainderLabel: string; // "1", "0", "A", "F", etc.
+	remainderLabel: string;
 }
 
 interface PositionalTermData {
@@ -41,11 +43,10 @@ interface ConversionStep {
 	title: string;
 	description: string;
 	type: StepType;
-	// Datos específicos según el tipo
 	divisionRow?: DivisionStepData;
-	allDivisions?: DivisionStepData[]; // divisiones acumuladas hasta este paso
+	allDivisions?: DivisionStepData[];
 	positionalTerms?: PositionalTermData[];
-	highlightedTerm?: number; // índice del término resaltado
+	highlightedTerm?: number;
 	partialSum?: number;
 	groups?: GroupData[];
 	highlightedGroup?: number;
@@ -58,15 +59,15 @@ interface ConversionStep {
 // ─────────────────────────────────────────────
 
 const BASE_LABELS: Record<Base, string> = {
+	bin: "Binario (base 2)",
+	dec: "Decimal (base 10)",
+	hex: "Hexadecimal (base 16)",
+};
+
+const BASE_SHORT: Record<Base, string> = {
 	bin: "Binario",
 	dec: "Decimal",
 	hex: "Hexadecimal",
-};
-
-const BASE_PREFIXES: Record<Base, string> = {
-	bin: "",
-	dec: "",
-	hex: "",
 };
 
 const HEX_DIGITS = "0123456789ABCDEF";
@@ -150,7 +151,10 @@ function generateDecToBinSteps(decimal: number): ConversionStep[] {
 		current = quotient;
 	}
 
-	const result = divisions.map((d) => d.remainderLabel).reverse().join("");
+	const result = divisions
+		.map((d) => d.remainderLabel)
+		.reverse()
+		.join("");
 
 	steps.push({
 		title: "Resultado: leer los restos de abajo hacia arriba",
@@ -215,7 +219,10 @@ function generateDecToHexSteps(decimal: number): ConversionStep[] {
 		current = quotient;
 	}
 
-	const result = divisions.map((d) => d.remainderLabel).reverse().join("");
+	const result = divisions
+		.map((d) => d.remainderLabel)
+		.reverse()
+		.join("");
 
 	steps.push({
 		title: "Resultado: leer los restos de abajo hacia arriba",
@@ -304,9 +311,7 @@ function generateHexToDecSteps(hex: string): ConversionStep[] {
 		const t = terms[i];
 		const digitValue = HEX_DIGITS.indexOf(t.digit);
 		const digitNote =
-			digitValue >= 10
-				? ` (recordá que ${t.digit} vale ${digitValue})`
-				: "";
+			digitValue >= 10 ? ` (recordá que ${t.digit} vale ${digitValue})` : "";
 
 		steps.push({
 			title: `Posición ${t.exponent}`,
@@ -341,7 +346,6 @@ function generateBinToHexSteps(binary: string): ConversionStep[] {
 		type: "intro",
 	});
 
-	// Pad to multiple of 4
 	let padded = binary;
 	while (padded.length % 4 !== 0) {
 		padded = "0" + padded;
@@ -436,11 +440,7 @@ function generateHexToBinSteps(hex: string): ConversionStep[] {
 // FUNCIÓN PRINCIPAL DE GENERACIÓN
 // ─────────────────────────────────────────────
 
-function generateSteps(
-	value: string,
-	from: Base,
-	to: Base
-): ConversionStep[] {
+function generateSteps(value: string, from: Base, to: Base): ConversionStep[] {
 	const cleaned = value.trim().toUpperCase();
 
 	if (from === "dec" && to === "bin")
@@ -452,16 +452,129 @@ function generateSteps(
 	if (from === "bin" && to === "hex") return generateBinToHexSteps(cleaned);
 	if (from === "hex" && to === "bin") return generateHexToBinSteps(cleaned);
 
-	// Misma base → no hay conversión
 	return [
 		{
 			title: "Sin conversión necesaria",
-			description: `El número ya está en base ${BASE_LABELS[to]}: ${cleaned}`,
+			description: `El número ya está en base ${BASE_SHORT[to]}: ${cleaned}`,
 			type: "result",
 			result: cleaned,
-			resultBase: BASE_LABELS[to],
+			resultBase: BASE_SHORT[to],
 		},
 	];
+}
+
+// ─────────────────────────────────────────────
+// DIAGRAMA DE PARTES DE LA DIVISIÓN
+// ─────────────────────────────────────────────
+
+function DivisionDiagram({ division }: { division: DivisionStepData }) {
+	const { dividend, divisor, quotient, remainder, remainderLabel } = division;
+	const producto = quotient * divisor;
+
+	return (
+		<div className="bg-slate-950 border border-slate-700 rounded-xl p-4 mb-4">
+			<p className="text-xs text-slate-400 mb-3 text-center font-medium">
+				Referencia: partes de la división entera (primer paso de esta
+				conversión)
+			</p>
+
+			{/*
+			  Estilo "galera" como se dibuja en el cuaderno:
+
+			   107  ⌐ 2
+			  -106  │─────
+			  ────  │ 53
+			     1  │
+			*/}
+			<div className="flex justify-center py-4">
+				<div className="flex flex-col items-start">
+					{/* Fila 1: Dividendo + Galera con Divisor */}
+					<div className="flex items-end">
+						<span className="font-mono text-3xl font-bold text-sky-400 pr-1">
+							{dividend}
+						</span>
+						<div className="flex-1 min-w-8" />
+						<div className="border-l-2 border-b-2 border-slate-400 pl-3 pr-4 pb-1 ml-1">
+							<span className="font-mono text-3xl font-bold text-amber-400">
+								{divisor}
+							</span>
+						</div>
+					</div>
+
+					{/* Fila 2: -Producto (cociente × divisor) + Cociente debajo de galera */}
+					<div className="flex w-full mt-1.5">
+						<div className="flex items-baseline">
+							<span className="font-mono text-3xl text-slate-500 mr-0.5">
+								−
+							</span>
+							<span className="font-mono text-3xl font-bold text-purple-400">
+								{producto}
+							</span>
+						</div>
+						<div className="flex-1 min-w-6" />
+						<span className="font-mono text-3xl font-bold text-emerald-400 pr-2">
+							{quotient}
+						</span>
+					</div>
+
+					{/* Fila 3: Línea de resta (solo en la columna izquierda) */}
+					<div className="w-1/2 h-0.5 bg-slate-500 my-1" />
+
+					{/* Fila 4: Resto */}
+					<span className="font-mono text-3xl font-bold text-rose-400 pl-3">
+						{remainderLabel}
+					</span>
+				</div>
+			</div>
+
+			{/* Etiquetas */}
+			<div className="flex justify-center py-2">
+				<div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs font-medium">
+					<span className="border border-sky-400/30 rounded px-2 py-0.5 bg-sky-400/5 text-sky-400/80">
+						{dividend} → Dividendo
+					</span>
+					<span className="border border-amber-400/30 rounded px-2 py-0.5 bg-amber-400/5 text-amber-400/80">
+						{divisor} → Divisor
+					</span>
+					<span className="border border-emerald-400/30 rounded px-2 py-0.5 bg-emerald-400/5 text-emerald-400/80">
+						{quotient} → Cociente
+					</span>
+					<span className="border border-purple-400/30 rounded px-2 py-0.5 bg-purple-400/5 text-purple-400/80">
+						{producto} → Cociente × Divisor
+					</span>
+					<span className="border border-rose-400/30 rounded px-2 py-0.5 bg-rose-400/5 text-rose-400/80">
+						{remainderLabel} → Resto
+					</span>
+				</div>
+			</div>
+
+			{/* Explicación textual */}
+			<div className="text-xs text-slate-500 mt-1 text-center space-y-0.5">
+				<p>
+					<span className="text-sky-400/70">{dividend}</span>{" "}
+					<span className="text-slate-400">÷</span>{" "}
+					<span className="text-amber-400/70">{divisor}</span>{" "}
+					<span className="text-slate-400">=</span>{" "}
+					<span className="text-emerald-400/70">{quotient}</span>{" "}
+					<span className="text-slate-400">con resto</span>{" "}
+					<span className="text-rose-400/70">{remainder}</span>
+				</p>
+				<p className="text-slate-600">
+					<span className="text-emerald-400/50">{quotient}</span>{" "}
+					<span className="text-slate-600">×</span>{" "}
+					<span className="text-amber-400/50">{divisor}</span>{" "}
+					<span className="text-slate-600">=</span>{" "}
+					<span className="text-purple-400/50">{producto}</span>
+					<span className="text-slate-700 mx-2">→</span>
+					<span className="text-sky-400/50">{dividend}</span>{" "}
+					<span className="text-slate-600">−</span>{" "}
+					<span className="text-purple-400/50">{producto}</span>{" "}
+					<span className="text-slate-600">=</span>{" "}
+					<span className="text-rose-400/50">{remainderLabel}</span>
+				</p>
+			</div>
+		</div>
+	);
 }
 
 // ─────────────────────────────────────────────
@@ -498,15 +611,19 @@ function DivisionTable({
 								className={`border-b border-slate-800 transition-colors ${isHighlighted ? "bg-sky-500/10" : ""}`}
 							>
 								<td className="py-2 px-3 text-slate-500">{i + 1}</td>
-								<td className="py-2 px-3 text-right font-mono font-bold">
+								<td className="py-2 px-3 text-right font-mono font-bold text-sky-400">
 									{d.dividend}
 								</td>
 								<td className="py-2 px-3 text-center text-slate-500">÷</td>
-								<td className="py-2 px-3 text-center font-mono">{d.divisor}</td>
+								<td className="py-2 px-3 text-center font-mono text-amber-400">
+									{d.divisor}
+								</td>
 								<td className="py-2 px-3 text-center text-slate-500">=</td>
-								<td className="py-2 px-3 text-right font-mono">{d.quotient}</td>
+								<td className="py-2 px-3 text-right font-mono text-emerald-400">
+									{d.quotient}
+								</td>
 								<td
-									className={`py-2 px-3 text-right font-mono font-bold ${isHighlighted ? "text-sky-400" : "text-emerald-400"}`}
+									className={`py-2 px-3 text-right font-mono font-bold ${isHighlighted ? "text-rose-400" : "text-rose-400/80"}`}
 								>
 									{d.remainderLabel}
 								</td>
@@ -524,7 +641,7 @@ function DivisionTable({
 						width="16"
 						height="40"
 						viewBox="0 0 16 40"
-						className="text-emerald-500"
+						className="text-rose-400"
 					>
 						<path
 							d="M8 36 L8 4 M3 9 L8 4 L13 9"
@@ -533,8 +650,11 @@ function DivisionTable({
 							strokeWidth="2"
 						/>
 					</svg>
-					<span className="font-mono font-bold text-emerald-400">
-						{divisions.map((d) => d.remainderLabel).reverse().join("")}
+					<span className="font-mono font-bold text-rose-400">
+						{divisions
+							.map((d) => d.remainderLabel)
+							.reverse()
+							.join("")}
 					</span>
 				</div>
 			)}
@@ -553,10 +673,10 @@ function PositionalView({
 }) {
 	return (
 		<div className="space-y-3">
-			{/* Fila de bits/dígitos con posiciones */}
 			<div className="flex flex-wrap gap-2 justify-center">
 				{terms.map((t, i) => {
-					const isActive = highlightedTerm !== undefined && i <= highlightedTerm;
+					const isActive =
+						highlightedTerm !== undefined && i <= highlightedTerm;
 					const isCurrent = i === highlightedTerm;
 					return (
 						<div
@@ -587,7 +707,6 @@ function PositionalView({
 				})}
 			</div>
 
-			{/* Suma parcial */}
 			{partialSum !== undefined && (
 				<div className="text-center text-sm">
 					<span className="text-slate-400">Suma parcial: </span>
@@ -651,6 +770,56 @@ export default function ConversorBases() {
 	const [error, setError] = useState("");
 	const [isConverted, setIsConverted] = useState(false);
 
+	// Ref para auto-scroll a la barra de navegación
+	const navRef = useRef<HTMLDivElement>(null);
+
+	// ── Auto-scroll cuando cambia el paso ──
+	useEffect(() => {
+		if (isConverted && navRef.current) {
+			navRef.current.scrollIntoView({
+				behavior: "smooth",
+				block: "nearest",
+			});
+		}
+	}, [currentStep, isConverted]);
+
+	// ── Navegación auxiliar ──
+	const goNext = useCallback(() => {
+		setCurrentStep((s) => Math.min(steps.length - 1, s + 1));
+	}, [steps.length]);
+
+	const goPrev = useCallback(() => {
+		setCurrentStep((s) => Math.max(0, s - 1));
+	}, []);
+
+	const goToEnd = useCallback(() => {
+		setCurrentStep(steps.length - 1);
+	}, [steps.length]);
+
+	// ── Atajos de teclado (flechas) ──
+	useEffect(() => {
+		if (!isConverted) return;
+
+		function handleKeyDown(e: KeyboardEvent) {
+			if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+				e.preventDefault();
+				goNext();
+			} else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+				e.preventDefault();
+				goPrev();
+			} else if (e.key === "End") {
+				e.preventDefault();
+				goToEnd();
+			} else if (e.key === "Home") {
+				e.preventDefault();
+				setCurrentStep(0);
+			}
+		}
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [isConverted, goNext, goPrev, goToEnd]);
+
 	function handleConvert() {
 		setError("");
 
@@ -671,16 +840,15 @@ export default function ConversorBases() {
 				hex: "dígitos 0-9 y letras A-F",
 			};
 			setError(
-				`El número no es válido en base ${BASE_LABELS[fromBase]}. Debe contener ${examples[fromBase]}.`
+				`El número no es válido en base ${BASE_SHORT[fromBase]}. Debe contener ${examples[fromBase]}.`,
 			);
 			return;
 		}
 
-		// Validar que no sea un número excesivamente grande
 		const decimalValue = toDecimal(inputValue, fromBase);
 		if (decimalValue > 999999) {
 			setError(
-				"Para fines didácticos, usá un número que en decimal sea menor a 1.000.000."
+				"Para fines didácticos, usá un número que en decimal sea menor a 1.000.000.",
 			);
 			return;
 		}
@@ -707,7 +875,7 @@ export default function ConversorBases() {
 		setIsConverted(false);
 	}
 
-	function handleKeyDown(e: React.KeyboardEvent) {
+	function handleInputKeyDown(e: React.KeyboardEvent) {
 		if (e.key === "Enter") handleConvert();
 	}
 
@@ -716,6 +884,14 @@ export default function ConversorBases() {
 	const isFirstStep = currentStep === 0;
 
 	const baseOptions: Base[] = ["bin", "dec", "hex"];
+
+	// ¿El paso actual es el intro de una conversión con divisiones? Mostramos el diagrama
+	const showDivisionDiagram =
+		step && step.type === "intro" && steps.some((s) => s.type === "division");
+
+	const firstDivision =
+		steps.find((s) => s.allDivisions && s.allDivisions.length > 0)
+			?.allDivisions?.[0] ?? null;
 
 	return (
 		<div className="space-y-8 max-w-3xl mx-auto">
@@ -752,7 +928,7 @@ export default function ConversorBases() {
 								setSteps([]);
 							}
 						}}
-						onKeyDown={handleKeyDown}
+						onKeyDown={handleInputKeyDown}
 						placeholder={
 							fromBase === "bin"
 								? "Ej: 11010110"
@@ -841,6 +1017,7 @@ export default function ConversorBases() {
 						<button
 							onClick={handleReset}
 							className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 px-4 rounded-lg transition-colors"
+							title="Reiniciar"
 						>
 							<RotateCcw size={18} />
 						</button>
@@ -869,7 +1046,7 @@ export default function ConversorBases() {
 									Paso {currentStep + 1} de {steps.length}
 								</span>
 								<span className="text-xs text-slate-500">
-									{BASE_LABELS[fromBase]} → {BASE_LABELS[toBase]}
+									{BASE_SHORT[fromBase]} → {BASE_SHORT[toBase]}
 								</span>
 							</div>
 							<h2 className="text-xl font-bold">{step.title}</h2>
@@ -880,6 +1057,11 @@ export default function ConversorBases() {
 
 						{/* Visualización según el tipo de paso */}
 						<div className="py-2">
+							{/* Diagrama de referencia de la división en el paso intro */}
+							{showDivisionDiagram && firstDivision && (
+								<DivisionDiagram division={firstDivision} />
+							)}
+
 							{step.type === "division" && step.allDivisions && (
 								<DivisionTable
 									divisions={step.allDivisions}
@@ -904,7 +1086,6 @@ export default function ConversorBases() {
 
 							{step.type === "result" && (
 								<div className="space-y-4">
-									{/* Si hay divisiones en el resultado final, mostrarlas */}
 									{step.allDivisions && (
 										<DivisionTable
 											divisions={step.allDivisions}
@@ -923,7 +1104,6 @@ export default function ConversorBases() {
 												Resultado en {step.resultBase}
 											</span>
 											<div className="font-mono text-3xl font-bold text-emerald-400 mt-1">
-												{BASE_PREFIXES[toBase]}
 												{step.result}
 											</div>
 										</div>
@@ -933,9 +1113,12 @@ export default function ConversorBases() {
 						</div>
 
 						{/* Navegación */}
-						<div className="flex items-center justify-between pt-2 border-t border-slate-800">
+						<div
+							ref={navRef}
+							className="flex items-center justify-between pt-3 border-t border-slate-800"
+						>
 							<button
-								onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}
+								onClick={goPrev}
 								disabled={isFirstStep}
 								className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 text-slate-300"
 							>
@@ -944,7 +1127,7 @@ export default function ConversorBases() {
 							</button>
 
 							{/* Dots de progreso */}
-							<div className="flex gap-1.5">
+							<div className="flex gap-1.5 flex-wrap justify-center max-w-[200px]">
 								{steps.map((_, i) => (
 									<button
 										key={i}
@@ -960,16 +1143,36 @@ export default function ConversorBases() {
 								))}
 							</div>
 
-							<button
-								onClick={() =>
-									setCurrentStep((s) => Math.min(steps.length - 1, s + 1))
-								}
-								disabled={isLastStep}
-								className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-500 text-white"
-							>
-								Siguiente
-								<ArrowRight size={16} />
-							</button>
+							<div className="flex items-center gap-2">
+								{/* Botón Ver resultado */}
+								{!isLastStep && (
+									<button
+										onClick={goToEnd}
+										className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30"
+										title="Ir al resultado final"
+									>
+										<SkipForward size={14} />
+										Resultado
+									</button>
+								)}
+
+								<button
+									onClick={goNext}
+									disabled={isLastStep}
+									className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-500 text-white"
+								>
+									Siguiente
+									<ArrowRight size={16} />
+								</button>
+							</div>
+						</div>
+
+						{/* Indicador de atajos de teclado */}
+						<div className="flex items-center justify-center gap-2 text-xs text-slate-600 pt-1">
+							<Keyboard size={12} />
+							<span>
+								Usá las flechas ← → del teclado para navegar entre pasos
+							</span>
 						</div>
 					</div>
 				</div>
