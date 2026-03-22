@@ -1127,7 +1127,7 @@ export default function ConversorBases() {
 							</button>
 
 							{/* Dots de progreso */}
-							<div className="flex gap-1.5 flex-wrap justify-center max-w-[200px]">
+							<div className="flex gap-1.5 flex-wrap justify-center max-w-50">
 								{steps.map((_, i) => (
 									<button
 										key={i}
