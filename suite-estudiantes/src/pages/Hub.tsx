@@ -8,6 +8,7 @@ import {
 	ChevronRight,
 	Hash,
 	Calculator,
+	Camera,
 } from "lucide-react";
 
 // Definimos el tipo de datos para nuestras herramientas
@@ -75,6 +76,16 @@ const tools: ToolCard[] = [
 		category: "Estructuras y Func. de Computadoras",
 		color: "text-rose-400",
 	},
+	{
+		title: "Compilador",
+		description:
+			"Simula el proceso de compilación de un programa fuente a código objeto.",
+		icon: Camera,
+		path: "/AyRP/compilador",
+		category: "Algoritmos y Resolución de Problemas",
+		color: "text-violet-400",
+	}
+
 ];
 
 export default function Hub() {

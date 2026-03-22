@@ -4,6 +4,7 @@ import Hub from "./pages/Hub";
 import EnConstruccion from "./pages/EnConstruccion";
 import ConversorBases from "./pages/efc/ConversorBases";
 import Subneteo from "./pages/redes/subneteo";
+import Compilador from "./pages/AyRP/compilador";
 
 function App() {
 	return (
@@ -27,6 +28,10 @@ function App() {
 
 					{/* Estructuras y Funcionamiento de Computadoras */}
 					<Route path="efc/conversor-bases" element={<ConversorBases />} />
+
+					{/* Algoritmos y resolución de problemas */}
+					<Route path="AyRP/algoritmos" element={<Compilador />} />
+
 
 					{/* Ruta comodín: cualquier otra URL vuelve al Hub */}
 					<Route path="*" element={<Hub />} />
