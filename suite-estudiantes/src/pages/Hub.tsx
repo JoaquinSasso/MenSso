@@ -33,7 +33,7 @@ const tools: ToolCard[] = [
 	{
 		title: "Subneteo IPv4",
 		description:
-			"Calculá subredes, máscaras, direcciones de broadcast y rangos de hosts válidos con explicaciones paso a paso.",
+			"Calculá subredes, máscaras, direcciones de broadcast,primer host,último host y rangos de hosts válidos con explicaciones paso a paso.",
 		icon: Calculator,
 		path: "/redes/subneteo",
 		category: "Redes de Datos",
