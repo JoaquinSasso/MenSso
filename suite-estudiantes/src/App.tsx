@@ -5,6 +5,7 @@ import EnConstruccion from "./pages/EnConstruccion";
 import ConversorBases from "./pages/efc/ConversorBases";
 import Subneteo from "./pages/redes/subneteo";
 import PlanificadorCPU from "./pages/so/PlanificadorCPU";
+import Compilador from "./pages/AyRP/compilador";
 
 function App() {
 	return (
@@ -25,6 +26,9 @@ function App() {
 
 					{/* Teoría de la Computación */}
 					<Route path="automatas/simulador" element={<EnConstruccion />} />
+
+					{/* Algoritmos y Resolución de Problemas */}
+					<Route path="AyRP/compilador" element={<Compilador />} />
 
 					{/* Estructuras y Funcionamiento de Computadoras */}
 					<Route path="efc/conversor-bases" element={<ConversorBases />} />
