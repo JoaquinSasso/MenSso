@@ -28,7 +28,7 @@ Herramienta gráfica para UML
 
 Generador de parciales de práctica 
 
-Conversor binario, decimal y hexadecimal  (COMPLETADO)
+Conversor binario, decimal y hexadecimal  (COMPLETADO)✅
 
 Simualdor de instrucciones en procesador (Estructuras de datos y funcionamiento de computadores)
 
