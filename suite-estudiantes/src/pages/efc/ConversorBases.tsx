@@ -493,7 +493,6 @@ function DivisionDiagram({ division }: { division: DivisionStepData }) {
 						<span className="font-mono text-3xl font-bold text-sky-400 pr-1">
 							{dividend}
 						</span>
-						<div className="flex-1 min-w-8" />
 						<div className="border-l-2 border-b-2 border-slate-400 pl-3 pr-4 pb-1 ml-1">
 							<span className="font-mono text-3xl font-bold text-amber-400">
 								{divisor}
@@ -1115,19 +1114,20 @@ export default function ConversorBases() {
 						{/* Navegación */}
 						<div
 							ref={navRef}
-							className="flex items-center justify-between pt-3 border-t border-slate-800"
+							className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800"
 						>
+							{/* Siguiente — arriba en móvil, derecha en desktop */}
 							<button
-								onClick={goPrev}
-								disabled={isFirstStep}
-								className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 text-slate-300"
+								onClick={goNext}
+								disabled={isLastStep}
+								className="w-full sm:w-auto order-first sm:order-last flex items-center justify-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-500 text-white"
 							>
-								<ArrowLeft size={16} />
-								Anterior
+								Siguiente
+								<ArrowRight size={16} />
 							</button>
 
-							{/* Dots de progreso */}
-							<div className="flex gap-1.5 flex-wrap justify-center max-w-50">
+							{/* Dots de progreso — segundo en móvil, centro en desktop */}
+							<div className="hidden sm:flex gap-1.5 flex-wrap justify-center w-auto">
 								{steps.map((_, i) => (
 									<button
 										key={i}
@@ -1143,32 +1143,32 @@ export default function ConversorBases() {
 								))}
 							</div>
 
-							<div className="flex items-center gap-2">
-								{/* Botón Ver resultado */}
+							{/* Fila inferior móvil: Anterior (izq) + Resultado (der) */}
+							<div className="flex w-full sm:w-auto items-center gap-2 sm:order-first">
+								<button
+									onClick={goPrev}
+									disabled={isFirstStep}
+									className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 text-slate-300"
+								>
+									<ArrowLeft size={16} />
+									Anterior
+								</button>
+
 								{!isLastStep && (
 									<button
 										onClick={goToEnd}
-										className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30"
+										className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 sm:order-last"
 										title="Ir al resultado final"
 									>
 										<SkipForward size={14} />
 										Resultado
 									</button>
 								)}
-
-								<button
-									onClick={goNext}
-									disabled={isLastStep}
-									className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-500 text-white"
-								>
-									Siguiente
-									<ArrowRight size={16} />
-								</button>
 							</div>
 						</div>
 
 						{/* Indicador de atajos de teclado */}
-						<div className="flex items-center justify-center gap-2 text-xs text-slate-600 pt-1">
+						<div className="flex items-center justify-center gap-2 text-xs text-slate-600 pt-2">
 							<Keyboard size={12} />
 							<span>
 								Usá las flechas ← → del teclado para navegar entre pasos
