@@ -273,7 +273,7 @@ export default function Subneteo() {
 					</p>
 				)}
 
-				<div className="flex gap-3">
+				<div className="flex flex-col sm:flex-row gap-3">
 					<button
 						onClick={handleCalculate}
 						className="flex-1 flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white font-medium py-3 px-6 rounded-lg transition-colors"
@@ -284,10 +284,11 @@ export default function Subneteo() {
 					{isCalculated && (
 						<button
 							onClick={handleReset}
-							className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 px-4 rounded-lg transition-colors"
+							className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 px-4 rounded-lg transition-colors"
 							title="Reiniciar"
 						>
 							<RotateCcw size={18} />
+							<span className="sm:hidden">Reiniciar</span>
 						</button>
 					)}
 				</div>
@@ -317,13 +318,13 @@ export default function Subneteo() {
 						<div className="py-4 flex justify-center">
 							{step.type === "ip-bin" && (
 								<div className="space-y-4 text-center">
-									<div className="flex gap-2 justify-center font-mono text-2xl text-slate-300">
+									<div className="flex flex-wrap gap-2 justify-center font-mono text-xl sm:text-2xl text-slate-300">
 										{step.data.ipParts.map((p: any, i: number) => (
-											<span key={i} className="bg-slate-800 px-3 py-1 rounded">{p}</span>
+											<span key={i} className="bg-slate-800 px-2 sm:px-3 py-1 rounded">{p}</span>
 										))}
 									</div>
 									<div className="text-slate-500 font-mono">↓</div>
-									<div className="flex gap-2 justify-center font-mono text-lg text-sky-400">
+									<div className="flex flex-wrap gap-2 justify-center font-mono text-base sm:text-lg text-sky-400">
 										{step.data.ipBin.map((p: any, i: number) => (
 											<span key={i} className="bg-sky-500/10 px-2 py-1 rounded border border-sky-500/20">{p}</span>
 										))}
@@ -333,50 +334,50 @@ export default function Subneteo() {
 
 							{step.type === "mask-bin" && (
 								<div className="space-y-4 text-center">
-									<div className="font-mono text-xl text-slate-300 bg-slate-800 px-4 py-2 rounded">
+									<div className="font-mono text-lg sm:text-xl text-slate-300 bg-slate-800 px-3 sm:px-4 py-2 rounded inline-block">
 										CIDR /<span className="text-amber-400 font-bold">{step.data.cidrNum}</span>
 									</div>
 									<div className="text-slate-500 font-mono">↓</div>
-									<div className="flex gap-2 justify-center font-mono text-lg text-amber-400">
+									<div className="flex flex-wrap gap-2 justify-center font-mono text-base sm:text-lg text-amber-400">
 										{step.data.maskBin.map((p: any, i: number) => (
 											<span key={i} className="bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">{p}</span>
 										))}
 									</div>
 									<div className="text-slate-500 font-mono">↓</div>
-									<div className="flex gap-2 justify-center font-mono text-2xl text-slate-200">
+									<div className="flex flex-wrap gap-2 justify-center font-mono text-xl sm:text-2xl text-slate-200">
 										{step.data.maskParts.map((p: any, i: number) => (
-											<span key={i} className="bg-slate-800 px-3 py-1 rounded">{p}</span>
+											<span key={i} className="bg-slate-800 px-2 sm:px-3 py-1 rounded">{p}</span>
 										))}
 									</div>
 								</div>
 							)}
 
 							{(step.type === "network" || step.type === "broadcast") && (
-								<div className="bg-slate-950 p-6 rounded-xl border border-slate-800 font-mono text-sm md:text-lg w-full max-w-xl">
-									<div className="flex justify-between gap-4 text-slate-400">
-										<span>IP</span>
-										<span className="text-sky-400 tracking-wider text-right">{step.data.ipBin.join(".")}</span>
+								<div className="bg-slate-950 p-4 sm:p-6 rounded-xl border border-slate-800 font-mono text-[11px] sm:text-sm md:text-lg w-full max-w-xl mx-auto">
+									<div className="flex flex-col sm:flex-row justify-between sm:gap-4 text-slate-400 mb-3 sm:mb-0">
+										<span className="mb-1 sm:mb-0">IP</span>
+										<span className="text-sky-400 tracking-[0.15em] sm:tracking-wider sm:text-right">{step.data.ipBin.join(".")}</span>
 									</div>
-									<div className="flex justify-between gap-4 text-slate-400 mt-2">
-										<span>{step.type === "network" ? "MÁSCARA" : "MÁSC. INV"}</span>
-										<span className="text-amber-400 tracking-wider text-right">
+									<div className="flex flex-col sm:flex-row justify-between sm:gap-4 text-slate-400 mt-2 mb-3 sm:mb-0">
+										<span className="mb-1 sm:mb-0">{step.type === "network" ? "MÁSCARA" : "MÁSC. INV"}</span>
+										<span className="text-amber-400 tracking-[0.15em] sm:tracking-wider sm:text-right">
 											{step.type === "network" ? step.data.maskBin.join(".") : step.data.invMaskBin.join(".")}
 										</span>
 									</div>
-									<div className="border-t border-slate-700 my-4 relative">
-										<span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-950 px-2 text-xs font-bold text-slate-500">
+									<div className="border-t border-slate-700 my-5 relative">
+										<span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-950 px-2 text-[10px] sm:text-xs font-bold text-slate-500">
 											{step.type === "network" ? "AND LÓGICO" : "OR LÓGICO"}
 										</span>
 									</div>
-									<div className="flex justify-between gap-4 font-bold">
-										<span className={step.type === "network" ? "text-emerald-400" : "text-rose-400"}>
+									<div className="flex flex-col sm:flex-row justify-between sm:gap-4 font-bold">
+										<span className={`mb-1 sm:mb-0 ${step.type === "network" ? "text-emerald-400" : "text-rose-400"}`}>
 											{step.type === "network" ? "RED" : "BROADCAST"}
 										</span>
-										<span className={`tracking-wider text-right ${step.type === "network" ? "text-emerald-400" : "text-rose-400"}`}>
+										<span className={`tracking-[0.15em] sm:tracking-wider sm:text-right ${step.type === "network" ? "text-emerald-400" : "text-rose-400"}`}>
 											{step.type === "network" ? step.data.netBin.join(".") : step.data.broadcastBin.join(".")}
 										</span>
 									</div>
-									<div className="mt-4 text-center text-slate-300 bg-slate-900 py-2 rounded">
+									<div className="mt-5 text-center text-slate-300 bg-slate-900 py-2 rounded text-xs sm:text-sm md:text-base">
 										Resultado Decimal: <span className="font-bold">{step.type === "network" ? step.data.netParts.join(".") : step.data.broadcastParts.join(".")}</span>
 									</div>
 								</div>
@@ -384,24 +385,24 @@ export default function Subneteo() {
 
 							{step.type === "hosts" && (
 								<div className="text-center space-y-6">
-									<div className="inline-flex gap-8 items-center bg-slate-950 p-6 rounded-xl border border-slate-800">
+									<div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-center justify-center bg-slate-950 p-4 sm:p-6 rounded-xl border border-slate-800">
 										<div className="space-y-1">
-											<p className="text-slate-500 text-sm">Fórmula</p>
-											<p className="text-2xl font-mono text-sky-400">2<sup className="text-sm">{step.data.hostBits}</sup> - 2</p>
+											<p className="text-slate-500 text-xs sm:text-sm">Fórmula</p>
+											<p className="text-xl sm:text-2xl font-mono text-sky-400">2<sup className="text-xs sm:text-sm">{step.data.hostBits}</sup> - 2</p>
 										</div>
-										<div className="text-2xl text-slate-600">=</div>
+										<div className="text-xl sm:text-2xl text-slate-600 hidden sm:block">=</div>
 										<div className="space-y-1">
-											<p className="text-slate-500 text-sm">Cálculo</p>
-											<p className="text-2xl font-mono text-slate-300">{step.data.totalHosts} - 2</p>
+											<p className="text-slate-500 text-xs sm:text-sm">Cálculo</p>
+											<p className="text-xl sm:text-2xl font-mono text-slate-300">{step.data.totalHosts} - 2</p>
 										</div>
-										<div className="text-2xl text-slate-600">=</div>
-										<div className="space-y-1">
-											<p className="text-slate-500 text-sm">Útiles</p>
-											<p className="text-3xl font-mono text-emerald-400 font-bold">{step.data.usableHosts.toLocaleString()}</p>
+										<div className="text-xl sm:text-2xl text-slate-600 hidden sm:block">=</div>
+										<div className="space-y-1 bg-emerald-500/10 sm:bg-transparent px-6 py-2 sm:p-0 rounded-lg sm:rounded-none border border-emerald-500/20 sm:border-none w-full sm:w-auto mt-2 sm:mt-0">
+											<p className="text-slate-500 text-xs sm:text-sm">Útiles</p>
+											<p className="text-2xl sm:text-3xl font-mono text-emerald-400 font-bold">{step.data.usableHosts.toLocaleString()}</p>
 										</div>
 									</div>
 									{(step.data.cidrNum === 31 || step.data.cidrNum === 32) && (
-										<p className="text-sm text-amber-400 bg-amber-500/10 inline-block px-4 py-2 rounded-lg border border-amber-500/20">
+										<p className="text-xs sm:text-sm text-amber-400 bg-amber-500/10 inline-block px-4 py-2 rounded-lg border border-amber-500/20">
 											Nota: Este es un caso especial RFC. Un /{step.data.cidrNum} tiene reglas diferentes para los hosts.
 										</p>
 									)}
@@ -420,27 +421,27 @@ export default function Subneteo() {
 							)}
 						</div>
 
-						<div ref={navRef} className="flex items-center justify-between pt-4 border-t border-slate-800">
-							<button onClick={goPrev} disabled={isFirstStep} className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 bg-slate-800 hover:bg-slate-700 text-slate-300">
+						<div ref={navRef} className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800">
+							<button onClick={goPrev} disabled={isFirstStep} className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 bg-slate-800 hover:bg-slate-700 text-slate-300">
 								<ArrowLeft size={16} /> Anterior
 							</button>
 
-							<div className="flex gap-1.5 flex-wrap justify-center">
+							<div className="flex gap-1.5 flex-wrap justify-center order-first sm:order-none w-full sm:w-auto">
 								{steps.map((_, i) => (
 									<button key={i} onClick={() => setCurrentStep(i)} className={`w-2 h-2 rounded-full transition-all ${i === currentStep ? "bg-sky-500 w-4" : i < currentStep ? "bg-sky-500/40" : "bg-slate-700"}`} />
 								))}
 							</div>
 
-							<div className="flex items-center gap-2">
+							<div className="flex w-full sm:w-auto items-center gap-2">
 								{!isLastStep && (
-									<button onClick={goToEnd} className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30" title="Ir al resumen">
+									<button onClick={goToEnd} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30" title="Ir al resumen">
 										<SkipForward size={14} /> Resumen
 									</button>
 								)}
 								<button 
 									onClick={goNext} 
 									disabled={isLastStep}
-									className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-500 text-white"
+									className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-500 text-white"
 								>
 									Siguiente 
 									<ArrowRight size={16} />
@@ -461,13 +462,13 @@ export default function Subneteo() {
 
 function ResultCard({ label, value, icon: Icon, color }: any) {
 	return (
-		<div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 flex items-center gap-4">
-			<div className={`p-3 rounded-lg bg-slate-950 ${color}`}>
-				<Icon size={24} />
+		<div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
+			<div className={`p-2 sm:p-3 rounded-lg bg-slate-950 shrink-0 ${color}`}>
+				<Icon size={24} className="w-5 h-5 sm:w-6 sm:h-6" />
 			</div>
-			<div>
-				<p className="text-sm font-medium text-slate-400 mb-1">{label}</p>
-				<p className="font-mono text-lg font-bold text-slate-100">{value}</p>
+			<div className="min-w-0">
+				<p className="text-xs sm:text-sm font-medium text-slate-400 mb-0.5 sm:mb-1 truncate">{label}</p>
+				<p className="font-mono text-sm sm:text-lg font-bold text-slate-100 truncate">{value}</p>
 			</div>
 		</div>
 	);
