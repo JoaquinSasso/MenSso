@@ -9,6 +9,7 @@ import {
 	Hash,
 	Calculator,
 	Camera,
+	ListOrdered
 } from "lucide-react";
 
 // Definimos el tipo de datos para nuestras herramientas
@@ -84,6 +85,15 @@ const tools: ToolCard[] = [
 		path: "/AyRP/compilador",
 		category: "Algoritmos y Resolución de Problemas",
 		color: "text-violet-400",
+	},
+	{
+		title: "Simulador de Arreglos",
+		description:
+			"Visualizá búsquedas (secuencial, binaria) y ordenamientos (burbuja, selección, inserción) paso a paso con pseudocódigo resaltado.",
+		icon: ListOrdered,
+		path: "/ayrp/simulador-arreglos",
+		category: "Algoritmos y Res. de Problemas",
+		color: "text-teal-400",
 	},
 ];
 
