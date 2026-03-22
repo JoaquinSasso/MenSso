@@ -30,7 +30,7 @@ function App() {
 					<Route path="efc/conversor-bases" element={<ConversorBases />} />
 
 					{/* Algoritmos y resolución de problemas */}
-					<Route path="AyRP/algoritmos" element={<Compilador />} />
+					<Route path="AyRP/compilador" element={<Compilador />} />
 
 
 					{/* Ruta comodín: cualquier otra URL vuelve al Hub */}
