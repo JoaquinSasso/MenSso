@@ -6,7 +6,7 @@ Simulador de ventana deslizante
 
 Simulador del viaje de un click (consulta web)
 
-Simulador de asignación de recursos y procesador (sistemas operativos)
+Simulador de asignación de recursos y procesador (sistemas operativos) (COMPLETADO)✅
 
 Graficadora de estructuras de datos (pila, cola, árbol, grafos, hashing)
 
@@ -32,6 +32,6 @@ Conversor binario, decimal y hexadecimal  (COMPLETADO)✅
 
 Simualdor de instrucciones en procesador (Estructuras de datos y funcionamiento de computadores)
 
-Calculadora de Subneteo (COMPLETADO)
+Calculadora de Subneteo (COMPLETADO)✅
 
 Simulador de arreglos, busquedas, ordenamientos, etc (para algoritmos y resolucion de problemas)

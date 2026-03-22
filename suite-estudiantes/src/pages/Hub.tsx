@@ -84,8 +84,7 @@ const tools: ToolCard[] = [
 		path: "/AyRP/compilador",
 		category: "Algoritmos y Resolución de Problemas",
 		color: "text-violet-400",
-	}
-
+	},
 ];
 
 export default function Hub() {
