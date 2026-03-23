@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-    ChevronLeft, Play, SkipForward, Square, Terminal, Database, Code, Keyboard
+    ChevronLeft, Play, SkipForward, Square, Terminal, Database, Code
 } from 'lucide-react';
 
+// --- Tipos y Estructuras de Datos ---
 export type TipoDato = 'entero' | 'real' | 'cadena' | 'caracter' | 'logico' | 'arreglo' | 'registro';
 
 export interface VariableMemoria {
@@ -12,6 +13,7 @@ export interface VariableMemoria {
     valor: any; 
     direccion: string;
     tamano?: number; 
+    baseIndex?: number; 
 }
 
 export interface EstadoEjecucion {
@@ -22,12 +24,12 @@ export interface EstadoEjecucion {
     error?: string;
 }
 
+// --- Motor de Ejecución Avanzado ---
 function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
     const lineas = codigo.split('\n');
     const memoria: VariableMemoria[] = [];
     const consola: string[] = [];
     
-    // 1. Pre-procesamiento de bloques (Mapas de saltos)
     const saltos: Record<number, number> = {};
     const pilaBloques: { tipo: string, linea: number }[] = [];
 
@@ -53,10 +55,17 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
                 saltos[block.linea] = i; 
                 saltos[i] = block.linea; 
             }
+        } else if (ln.startsWith('mientras ')) {
+            pilaBloques.push({ tipo: 'mientras', linea: i });
+        } else if (ln === 'finmientras') {
+            const block = pilaBloques.pop();
+            if (block) {
+                saltos[block.linea] = i; 
+                saltos[i] = block.linea; 
+            }
         }
     }
 
-    // Función auxiliar corregida con \b (Word Boundaries)
     const evaluar = (expresion: string, lineaActual: number) => {
         let jsExpr = expresion
             .replace(/\bY\b/ig, '&&')
@@ -68,14 +77,32 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
             .replace(/!===/g, '!=');
 
         const varsLocal: Record<string, any> = {};
-        memoria.forEach(v => varsLocal[v.nombre] = v.valor);
+        
+        memoria.forEach(v => {
+            if (v.tipo === 'arreglo') {
+                varsLocal[v.nombre] = new Proxy(v.valor, {
+                    get(target: any, prop: string | symbol) {
+                        if (typeof prop === 'string' && prop.trim() !== '') {
+                            const idx = Number(prop);
+                            if (!isNaN(idx)) {
+                                if (idx === v.tamano && v.baseIndex === 0) v.baseIndex = 1;
+                                else if (idx === 0 && v.baseIndex === 1) v.baseIndex = 0;
+                            }
+                        }
+                        return target[prop];
+                    }
+                });
+            } else {
+                varsLocal[v.nombre] = v.valor;
+            }
+        });
 
         try {
             const nombres = Object.keys(varsLocal);
             const valores = Object.values(varsLocal);
             
             jsExpr = jsExpr.replace(/([a-zA-Z_]\w*)\[(.+?)\]/g, (match, arrName, indexExpr) => {
-                return `${arrName}[(${indexExpr}) - 1]`;
+                return `${arrName}[${indexExpr}]`; 
             });
             
             const func = new Function(...nombres, `return ${jsExpr};`);
@@ -85,7 +112,6 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
         }
     };
 
-    // 2. Bucle de Ejecución (Instruction Pointer)
     let ip = 0;
     let enEjecucion = false;
 
@@ -101,7 +127,12 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
         if (linea === 'fin') { break; }
         if (!enEjecucion) { ip++; continue; }
 
-        yield { lineaActual: ip, memoria: [...memoria.map(v => ({...v, valor: Array.isArray(v.valor) ? [...v.valor] : v.valor}))], consola: [...consola], terminado: false };
+        const memoriaClonada = memoria.map(v => ({
+            ...v, 
+            valor: Array.isArray(v.valor) ? [...v.valor] : (typeof v.valor === 'object' && v.valor !== null ? {...v.valor} : v.valor)
+        }));
+
+        yield { lineaActual: ip, memoria: memoriaClonada, consola: [...consola], terminado: false };
 
         try {
             const matchArreglo = lineaRaw.match(/^(entero|real|cadena|caracter|booleano|logico)\s+([a-zA-Z_]\w*)\[(\d+)\]/i);
@@ -110,8 +141,9 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
                 const tamano = parseInt(matchArreglo[3]);
                 memoria.push({
                     nombre, tipo: 'arreglo', tamano,
-                    valor: new Array(tamano).fill(matchArreglo[1].toLowerCase() === 'cadena' ? '""' : 0),
-                    direccion: `0x${Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0')}`
+                    valor: new Array(tamano + 1).fill(matchArreglo[1].toLowerCase() === 'cadena' ? '""' : 0),
+                    direccion: `0x${Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0')}`,
+                    baseIndex: 0 
                 });
                 ip++; continue;
             }
@@ -135,7 +167,15 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
                 const expr = matchAsignacionArr[3];
                 const variable = memoria.find(v => v.nombre === nombre);
                 if (variable && variable.tipo === 'arreglo') {
-                    const idxReal = evaluar(idxExpr, ip) - 1; 
+                    const idxReal = evaluar(idxExpr, ip); 
+                    
+                    if (idxReal < 0 || idxReal > (variable.tamano || 0)) {
+                        throw new Error(`Índice [${idxReal}] fuera de límites. El arreglo '${nombre}' tiene un tamaño de ${variable.tamano}.`);
+                    }
+
+                    if (idxReal === variable.tamano && variable.baseIndex === 0) variable.baseIndex = 1;
+                    else if (idxReal === 0 && variable.baseIndex === 1) variable.baseIndex = 0;
+                    
                     variable.valor[idxReal] = evaluar(expr, ip);
                 } else { throw new Error(`El arreglo '${nombre}' no existe.`); }
                 ip++; continue;
@@ -150,7 +190,7 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
                     const [regName, propName] = destino.split('.');
                     let variable = memoria.find(v => v.nombre === regName);
                     if (!variable) {
-                        variable = { nombre: regName, tipo: 'registro', valor: {}, direccion: `0x${Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase()}` };
+                        variable = { nombre: regName, tipo: 'registro', valor: {}, direccion: `0x${Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0')}` };
                         memoria.push(variable);
                     }
                     variable.valor[propName] = evaluar(expr, ip);
@@ -170,6 +210,19 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
                 continue;
             }
 
+            const matchMientras = lineaRaw.match(/^Mientras\s*\((.+)\)/i);
+            if (matchMientras) {
+                const condicion = evaluar(matchMientras[1], ip);
+                if (!condicion) ip = saltos[ip] + 1; 
+                else ip++;
+                continue;
+            }
+
+            if (linea === 'finmientras') {
+                ip = saltos[ip]; 
+                continue;
+            }
+
             const matchPara = lineaRaw.match(/^Para\s+([a-zA-Z_]\w*)\s+desde\s+(.+)\s+hasta\s+(.+)/i);
             if (matchPara) {
                 const varControl = matchPara[1];
@@ -179,7 +232,6 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
                 const inicio = evaluar(matchPara[2], ip);
                 const fin = evaluar(matchPara[3], ip);
                 
-                // Si es la primera ejecución del bucle
                 if (variable.valor === 0 && inicio !== 0) variable.valor = inicio;
 
                 if (variable.valor <= fin) {
@@ -192,10 +244,11 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
             }
 
             if (linea === 'finpara') {
-                const varControl = lineas[saltos[ip]].match(/^Para\s+([a-zA-Z_]\w*)/i)?.[1];
+                const lineaPara = lineas[saltos[ip]].trim();
+                const varControl = lineaPara.match(/^Para\s+([a-zA-Z_]\w*)/i)?.[1];
                 if (varControl) {
                     const v = memoria.find(varMem => varMem.nombre === varControl);
-                    if (v) v.valor += 1;
+                    if (v) v.valor += 1; 
                 }
                 ip = saltos[ip]; 
                 continue;
@@ -233,52 +286,40 @@ function* ejecutarPasoAPaso(codigo: string): Generator<EstadoEjecucion> {
     yield { lineaActual: null, memoria, consola, terminado: true };
 }
 
+// --- Componente UI Principal ---
 export default function InterpretePseudocodigo() {
     const [codigo, setCodigo] = useState<string>(
-`Algoritmo AnalisisEstudiantil
+`Algoritmo LiquidacionSueldo
 Comienzo
-  /* 1. Declaracion de variables y arreglos */
-  entero notas[5]
-  entero i
-  real suma
-  real promedio
-  entero mejor_nota
-  entero mejor_posicion
+  real sueldo_base
+  real bono_categoria
 
-  /* 2. Inicializacion */
-  suma = 0
-  mejor_nota = -1
-  mejor_posicion = 0
+  empleado.legajo = 1042
+  empleado.categoria = 2
+  empleado.horas_trabajadas = 160
+  empleado.tarifa_hora = 2500.50
 
-  notas[1] = 7
-  notas[2] = 5
-  notas[3] = 10
-  notas[4] = 8
-  notas[5] = 6
+  empresa.nombre = "Tech UNSJ"
+  empresa.sucursal = 3
 
-  Escribir "Procesando el rendimiento del alumno..."
+  Escribir "Calculando liquidacion para el legajo", empleado.legajo
 
-  /* 3. Bucle Para y Condicional Si */
-  Para i desde 1 hasta 5
-    suma = suma + notas[i]
+  sueldo_base = empleado.horas_trabajadas * empleado.tarifa_hora
 
-    Si (notas[i] > mejor_nota) Entonces
-      mejor_nota = notas[i]
-      mejor_posicion = i
-    FinSi
-  FinPara
+  Si (empleado.categoria = 1) Entonces
+    bono_categoria = 50000
+  Sino
+    bono_categoria = 20000
+  FinSi
 
-  promedio = suma / 5
+  recibo.empresa_emisora = empresa.nombre
+  recibo.monto_base = sueldo_base
+  recibo.monto_bono = bono_categoria
+  recibo.total_pagar = sueldo_base + bono_categoria
+  recibo.estado_pago = "Pendiente"
 
-  /* 4. Uso de un Registro estructurado */
-  destacado.valor = mejor_nota
-  destacado.indice = mejor_posicion
-  destacado.supero_promedio = 1
-
-  /* 5. Salida de resultados */
-  Escribir "El promedio general es", promedio
-  Escribir "La mejor nota fue un", destacado.valor
-  Escribir "Se encontro en la celda", destacado.indice
+  Escribir "Recibo generado para la empresa", recibo.empresa_emisora
+  Escribir "El total a transferir es", recibo.total_pagar
 Fin`
     );
 
@@ -287,6 +328,8 @@ Fin`
     });
 
     const generadorRef = useRef<Generator<EstadoEjecucion> | null>(null);
+    const highlightRef = useRef<HTMLDivElement>(null);
+    const lineNumbersRef = useRef<HTMLDivElement>(null);
 
     const iniciarDepuracion = useCallback(() => {
         generadorRef.current = ejecutarPasoAPaso(codigo);
@@ -306,6 +349,16 @@ Fin`
         setEstado({ lineaActual: null, memoria: [], consola: [], terminado: false });
     }, []);
 
+    const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+        if (highlightRef.current) {
+            highlightRef.current.scrollTop = e.currentTarget.scrollTop;
+            highlightRef.current.scrollLeft = e.currentTarget.scrollLeft;
+        }
+        if (lineNumbersRef.current) {
+            lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
+        }
+    };
+
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
             if (!generadorRef.current) return;
@@ -320,103 +373,161 @@ Fin`
     }, [avanzarPaso, detener]);
 
     const enEjecucion = generadorRef.current !== null;
+    
+    const numLineas = Math.max(codigo.split('\n').length, 20);
+    const lineasArray = Array.from({ length: numLineas }, (_, i) => i + 1);
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500 min-h-[85vh] flex flex-col">
+        // Se incrementó min-h-[85vh] a min-h-[90vh] para dar más espacio general en monitores grandes
+        <div className="space-y-4 max-w-7xl mx-auto animate-in fade-in duration-500 min-h-[90vh] flex flex-col pb-8">
             
-            <div className="space-y-2 mb-2">
+            {/* Cabecera Clásica */}
+            <div className="space-y-2">
                 <Link to="/" className="inline-flex items-center gap-1 text-slate-400 hover:text-sky-400 transition-colors text-sm">
                     <ChevronLeft size={16} /> Volver al Hub
                 </Link>
-                <h1 className="text-3xl font-bold">Intérprete de Pseudocódigo</h1>
-                <p className="text-slate-400">
-                    Soporta estructuras <code>Si</code>, <code>Para</code>, y <code>Arreglos</code>. Observa la memoria cambiar en vivo.
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-50">Intérprete de Pseudocódigo</h1>
+                <p className="text-slate-400 text-sm sm:text-base">
+                    Soporta <code>Si</code>, <code>Para</code>, <code>Mientras</code>, Registros y Arreglos.
                 </p>
             </div>
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* CONTROLES STICKY */}
+            <div className="sticky top-16 z-40 flex items-center justify-between lg:justify-end gap-3 bg-slate-950/90 backdrop-blur-xl border-y border-slate-800 -mx-4 px-4 py-3 shadow-lg lg:static lg:bg-transparent lg:border-none lg:backdrop-blur-none lg:mx-0 lg:px-0 lg:py-0 lg:shadow-none">
                 
+                <div className="text-xs font-mono flex items-center gap-1.5 lg:hidden">
+                    {enEjecucion ? (
+                        <><span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span> <span className="text-sky-400 font-bold">En ejecución</span></>
+                    ) : (
+                        <><span className="w-2 h-2 rounded-full bg-slate-500"></span> <span className="text-slate-400">Listo</span></>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2 w-full lg:w-auto">
+                    {!enEjecucion ? (
+                        <button onClick={iniciarDepuracion} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white font-medium py-2 sm:py-1.5 px-4 rounded-lg transition-colors text-sm shadow-md">
+                            <Play size={16} fill="currentColor" /> <span className="hidden sm:inline">Iniciar</span><span className="sm:hidden">Ejecutar</span>
+                        </button>
+                    ) : (
+                        <>
+                            <button onClick={avanzarPaso} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 font-medium py-2 sm:py-1.5 px-4 rounded-lg transition-colors text-sm">
+                                <SkipForward size={16} /> <span className="hidden sm:inline">Paso a paso</span><span className="sm:hidden">Paso</span>
+                            </button>
+                            <button onClick={detener} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-rose-900/50 hover:text-rose-400 text-slate-300 font-medium py-2 sm:py-1.5 px-4 rounded-lg transition-colors text-sm" title="Detener Ejecución">
+                                <Square size={16} fill="currentColor" /> <span className="lg:hidden ml-1">Detener</span>
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Layout Dividido */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+                
+                {/* PANEL 1: Editor Mejorado */}
                 <div className="lg:col-span-6 flex flex-col bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/80 gap-3">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/80">
                         <div className="flex items-center gap-2 text-slate-300 font-medium">
                             <Code size={18} className="text-sky-400" /> <span>Editor</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            {!enEjecucion ? (
-                                <button onClick={iniciarDepuracion} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm">
-                                    <Play size={16} /> Iniciar
-                                </button>
-                            ) : (
-                                <>
-                                    <button onClick={avanzarPaso} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 font-medium py-1.5 px-4 rounded-lg transition-colors text-sm">
-                                        <SkipForward size={16} /> Paso a paso
-                                    </button>
-                                    <button onClick={detener} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-rose-900/50 hover:text-rose-400 text-slate-300 font-medium py-1.5 px-3 rounded-lg transition-colors text-sm" title="Detener">
-                                        <Square size={16} />
-                                    </button>
-                                </>
-                            )}
-                        </div>
                     </div>
                     
-                    <div className="flex-1 relative min-h-[500px]">
-                        <div className="absolute inset-0 pointer-events-none p-4 font-mono text-base leading-relaxed" aria-hidden="true">
-                             {codigo.split('\n').map((_, index) => (
-                                <div key={index} className={`h-[1.5em] w-full rounded-sm transition-colors duration-200 ${estado.lineaActual === index ? 'bg-sky-500/10 border-l-4 border-sky-400' : 'border-l-4 border-transparent'}`} />
-                             ))}
+                    {/* AQUI ESTA EL CAMBIO: lg:min-h-[75vh] y xl:min-h-[80vh] para que en escritorio ocupe mucho más a lo alto */}
+                    <div className="flex flex-1 relative min-h-[500px] md:min-h-[550px] lg:min-h-[75vh] xl:min-h-[80vh] bg-[#0A0D14]">
+                        
+                        <div 
+                            ref={lineNumbersRef}
+                            className="w-10 sm:w-12 py-4 flex flex-col items-end pr-2 sm:pr-3 font-mono text-sm sm:text-base text-slate-600 bg-slate-950/80 select-none border-r border-slate-800/80 overflow-hidden"
+                            aria-hidden="true"
+                        >
+                            {lineasArray.map(n => (
+                                <span key={n} className="leading-relaxed h-[1.5em]">{n}</span>
+                            ))}
                         </div>
-                        <textarea
-                            value={codigo} onChange={(e) => setCodigo(e.target.value)} disabled={enEjecucion} spellCheck="false"
-                            className="absolute inset-0 w-full h-full p-4 font-mono text-base leading-relaxed bg-transparent text-slate-300 resize-none focus:outline-none disabled:opacity-80 whitespace-pre"
-                            style={{ tabSize: 4 }}
-                        />
+
+                        <div className="flex-1 relative overflow-hidden">
+                            <div 
+                                ref={highlightRef}
+                                className="absolute inset-0 overflow-hidden p-4 font-mono text-sm sm:text-base leading-relaxed pointer-events-none whitespace-pre"
+                                aria-hidden="true"
+                            >
+                                {codigo.split('\n').map((_, index) => (
+                                    <div 
+                                        key={index} 
+                                        className={`h-[1.5em] w-full rounded-r-sm transition-colors duration-200 ${
+                                            estado.lineaActual === index 
+                                            ? 'bg-sky-500/20 border-l-4 border-sky-400' 
+                                            : 'border-l-4 border-transparent'
+                                        }`} 
+                                    />
+                                ))}
+                            </div>
+                            
+                            <textarea
+                                value={codigo} 
+                                onChange={(e) => setCodigo(e.target.value)} 
+                                onScroll={handleScroll}
+                                disabled={enEjecucion} 
+                                spellCheck="false"
+                                className="absolute inset-0 w-full h-full p-4 font-mono text-sm sm:text-base leading-relaxed bg-transparent text-slate-300 resize-none outline-none disabled:opacity-80 whitespace-pre overflow-auto scrollbar-thin scrollbar-thumb-slate-700 pb-16 lg:pb-8"
+                                style={{ tabSize: 4 }}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div className="lg:col-span-6 flex flex-col gap-6">
-                    <div className="flex-1 flex flex-col bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl min-h-[350px]">
-                        <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center gap-2 text-slate-300 font-medium">
+                {/* PANEL 2: Memoria y Consola */}
+                <div className="lg:col-span-6 flex flex-col gap-5 lg:gap-6">
+                    
+                    {/* Mapa de Memoria */}
+                    <div className="flex-1 flex flex-col bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl min-h-[300px] lg:min-h-[350px]">
+                        <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center gap-2 text-slate-300 font-medium text-sm sm:text-base">
                             <Database size={18} className="text-emerald-400" /> <span>Mapa de Memoria</span>
                         </div>
-                        <div className="p-4 flex-1 overflow-auto">
+                        <div className="p-3 sm:p-4 flex-1 overflow-auto">
                             {estado.memoria.length === 0 ? (
-                                <div className="flex h-full items-center justify-center text-slate-500 text-sm text-center px-8 border-2 border-dashed border-slate-800 rounded-xl">
-                                    Inicia la ejecución para ver variables, arreglos y registros en memoria.
+                                <div className="flex h-full items-center justify-center text-slate-500 text-xs sm:text-sm text-center px-4 sm:px-8 border-2 border-dashed border-slate-800 rounded-xl">
+                                    Inicia la ejecución para ver variables en memoria.
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     {estado.memoria.map((variable, idx) => (
-                                        <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-3 shadow-inner">
+                                        <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-3 shadow-inner transition-all duration-300">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-sky-400">{variable.nombre}</span>
-                                                    <span className="text-[10px] uppercase tracking-wider text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full">{variable.tipo}</span>
+                                                    <span className="font-bold text-sky-400 text-sm sm:text-base">{variable.nombre}</span>
+                                                    <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-emerald-400/80 bg-emerald-950/50 border border-emerald-900/50 px-2 py-0.5 rounded-full">{variable.tipo}</span>
                                                 </div>
-                                                <span className="text-[10px] font-mono text-slate-600">{variable.direccion}</span>
+                                                <span className="text-[9px] sm:text-[10px] font-mono text-slate-600 hidden xs:inline-block">{variable.direccion}</span>
                                             </div>
                                             
                                             {variable.tipo === 'arreglo' ? (
-                                                <div className="flex gap-1 overflow-x-auto pb-1">
-                                                    {Array.isArray(variable.valor) && variable.valor.map((val, i) => (
-                                                        <div key={i} className="flex flex-col items-center min-w-[3rem]">
-                                                            <span className="text-[10px] text-slate-500 mb-1">[{i + 1}]</span>
-                                                            <div className="w-full flex items-center justify-center h-10 px-2 bg-slate-900 border border-slate-700 rounded-md text-slate-200 font-mono text-sm shadow-sm transition-all duration-300">
+                                                <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-700">
+                                                    {Array.isArray(variable.valor) && variable.valor
+                                                        .map((val, i) => ({ val, i }))
+                                                        .filter(({ i }) => i >= (variable.baseIndex || 0) && i < (variable.baseIndex || 0) + (variable.tamano || 0))
+                                                        .map(({ val, i }) => (
+                                                        <div key={i} className="flex flex-col items-center min-w-[2.5rem] sm:min-w-[3rem]">
+                                                            <span className="text-[9px] sm:text-[10px] text-slate-500 mb-1">[{i}]</span>
+                                                            <div className="w-full flex items-center justify-center h-8 sm:h-10 px-1 sm:px-2 bg-slate-900 border border-slate-700 rounded-md text-slate-200 font-mono text-xs sm:text-sm shadow-sm transition-colors duration-200">
                                                                 {val !== undefined && val !== null ? val : '-'}
                                                             </div>
                                                         </div>
                                                     ))}
                                                 </div>
-                                            ) : variable.tipo === 'registro' ? (
-                                                <div className="grid grid-cols-2 gap-2 mt-2 bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
+                                            ) 
+                                            : variable.tipo === 'registro' ? (
+                                                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 mt-2 bg-slate-900/30 p-2 rounded-lg border border-slate-800/50">
                                                     {Object.entries(variable.valor).map(([key, val]: any, i) => (
-                                                        <div key={i} className="flex items-center justify-between text-sm font-mono">
-                                                            <span className="text-slate-400">.{key}</span>
-                                                            <span className="text-emerald-400 font-bold">{val}</span>
+                                                        <div key={i} className="flex items-center justify-between text-xs sm:text-sm font-mono bg-slate-900/50 px-2 py-1.5 rounded border border-slate-800">
+                                                            <span className="text-slate-400 truncate pr-2">.{key}</span>
+                                                            <span className="text-sky-300 font-bold whitespace-nowrap">{val}</span>
                                                         </div>
                                                     ))}
                                                 </div>
-                                            ) : (
-                                                <div className="flex items-center justify-end h-10 px-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 font-mono text-lg shadow-sm">
+                                            ) 
+                                            : (
+                                                <div className="flex items-center justify-end h-8 sm:h-10 px-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 font-mono text-sm sm:text-lg shadow-sm">
                                                     {variable.valor}
                                                 </div>
                                             )}
@@ -427,17 +538,30 @@ Fin`
                         </div>
                     </div>
 
-                    <div className="h-48 flex flex-col bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                        <div className="px-4 py-2 border-b border-slate-800 flex items-center gap-2 text-slate-400 text-xs font-mono uppercase tracking-wider bg-slate-900/50">
+                    {/* Consola de Salida */}
+                    <div className="h-40 sm:h-48 lg:h-56 flex flex-col bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-xl shrink-0">
+                        <div className="px-4 py-2 border-b border-slate-800 flex items-center gap-2 text-slate-400 text-[10px] sm:text-xs font-mono uppercase tracking-wider bg-slate-900/50">
                             <Terminal size={14} /> <span>Salida Estándar</span>
                         </div>
-                        <div className="p-4 flex-1 overflow-auto font-mono text-sm text-slate-300 space-y-1">
+                        <div className="p-3 sm:p-4 flex-1 overflow-auto font-mono text-xs sm:text-sm text-slate-300 space-y-2">
                             {estado.error && (
-                                <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-2 rounded-lg"><span className="font-bold">Error:</span> {estado.error}</div>
+                                <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-2 rounded-lg">
+                                    <span className="font-bold">Error:</span> {estado.error}
+                                </div>
                             )}
                             {estado.consola.map((msg, idx) => (
-                                <div key={idx} className="flex gap-2"><span className="text-slate-600">{'>'}</span> <span className="text-emerald-400">{msg}</span></div>
+                                <div key={idx} className="flex gap-2">
+                                    <span className="text-slate-600 select-none">{'>'}</span> 
+                                    <span className="text-emerald-400 font-medium break-all">{msg}</span>
+                                </div>
                             ))}
+                            {estado.terminado && !estado.error && (
+                                <div className="text-slate-500 italic mt-4 flex items-center gap-2 text-[10px] sm:text-xs">
+                                    <div className="h-px bg-slate-800 flex-1"></div>
+                                    Ejecución finalizada
+                                    <div className="h-px bg-slate-800 flex-1"></div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     
