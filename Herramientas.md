@@ -8,13 +8,13 @@ Simulador del viaje de un click (consulta web)
 
 Simulador de asignación de recursos y procesador (sistemas operativos) (COMPLETADO)✅
 
-Graficadora de estructuras de datos (pila, cola, árbol, grafos, hashing)
+Graficadora de estructuras de datos (pila, cola, árbol, grafos, hashing) (en proceso)
 
 Simulador de autómatas finitos
 
-Compilador para pseudo código (escaneo con camara)(COMPLETADO)✅
+Compilador para pseudo código (escaneo con camara)
 
-Simulador de mapa de memoria (algoritmos y resolución problemas / procedural)
+Simulador de mapa de memoria (algoritmos y resolución problemas / procedural) (COMPLETADO)✅
 
 Simulador de administración de memoria (paradigmas)
 
@@ -30,7 +30,7 @@ Generador de parciales de práctica
 
 Conversor binario, decimal y hexadecimal  (COMPLETADO)✅
 
-Simualdor de instrucciones en procesador (Estructuras de datos y funcionamiento de computadores)
+Simualdor de instrucciones en procesador (Estructuras de datos y funcionamiento de computadores) (COMPLETADO)✅
 
 Calculadora de Subneteo (COMPLETADO)✅
 
