@@ -12,7 +12,7 @@ Graficadora de estructuras de datos (pila, cola, árbol, grafos, hashing)
 
 Simulador de autómatas finitos
 
-Compilador para pseudo código (escaneo con camara)
+Compilador para pseudo código (escaneo con camara)(COMPLETADO)✅
 
 Simulador de mapa de memoria (algoritmos y resolución problemas / procedural)
 
