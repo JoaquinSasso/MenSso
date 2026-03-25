@@ -9,44 +9,46 @@ import SimuladorArreglos from "./pages/AyRP/SimuladorArreglos";
 import Compilador from "./pages/AyRP/compilador";
 import DiagramaClases from "./pages/poo/DiagramaClases";
 
+
+
 function App() {
-	return (
-		<BrowserRouter>
-			<Routes>
-				<Route path="/" element={<Layout />}>
-					<Route index element={<Hub />} />
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<Layout />}>
+                    <Route index element={<Hub />} />
 
-					{/* Redes */}
-					<Route path="redes/click" element={<EnConstruccion />} />
-					<Route path="redes/subneteo" element={<Subneteo />} />
+                    {/* Redes */}
+                    <Route path="redes/click" element={<EnConstruccion />} />
+                    <Route path="redes/subneteo" element={<Subneteo />} />
 
-					{/* Bases de Datos */}
-					<Route path="db/er-sql" element={<EnConstruccion />} />
+                    {/* Bases de Datos */}
+                    <Route path="db/er-sql" element={<EnConstruccion />} />
 
-					{/* Sistemas Operativos */}
-					<Route path="so/planificador" element={<PlanificadorCPU />} />
+                    {/* Sistemas Operativos */}
+                    <Route path="so/planificador" element={<PlanificadorCPU />} />
 
-					{/* Teoría de la Computación */}
-					<Route path="automatas/simulador" element={<EnConstruccion />} />
+                    {/* Teoría de la Computación */}
+                    <Route path="automatas/simulador" element={<EnConstruccion />} />
 
-					{/* Algoritmos y Resolución de Problemas */}
-					<Route path="AyRP/compilador" element={<Compilador />} />
+                    {/* Algoritmos y Resolución de Problemas */}
+                    <Route path="AyRP/compilador" element={<Compilador />} />
+                    <Route path="ayrp/simulador-arreglos" element={<SimuladorArreglos />} />
 
-					{/* Estructuras y Funcionamiento de Computadoras */}
-					<Route path="efc/conversor-bases" element={<ConversorBases />} />
+                    {/* Estructuras y Funcionamiento de Computadoras */}
+                    <Route path="efc/conversor-bases" element={<ConversorBases />} />
 
-					{/* Algoritmos y Resolución de Problemas */}
-					<Route path="ayrp/simulador-arreglos" element={<SimuladorArreglos />} />
+                    {/* Programacion orientada a objetos */}
+                    <Route path="poo/diagrama-clases" element={<DiagramaClases />} />
 
-					{/* Ruta comodín: cualquier otra URL vuelve al Hub */}
-					<Route path="*" element={<Hub />} />
+                   
 
-					{/*Programacion orientada a objetos */}
-					<Route path="poo/diagrama-clases" element={<DiagramaClases />} />
-				</Route>
-			</Routes>
-		</BrowserRouter>
-	);
+                    {/* IMPORTANTE: La ruta comodín siempre al final de la lista */}
+                    <Route path="*" element={<Hub />} />
+                </Route>
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
 export default App;
