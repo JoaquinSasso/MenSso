@@ -120,12 +120,6 @@ function simulate(
 	const ganttData: Record<string, CellType[]> = {};
 	for (const p of procs) ganttData[p.name] = [];
 
-	const isPreemptive =
-		algorithm === "sjf-preemptive-burst" ||
-		algorithm === "sjf-preemptive-remaining" ||
-		algorithm === "round-robin" ||
-		algorithm === "priorities";
-
 	const usesQuantum = algorithm === "round-robin" || algorithm === "priorities";
 
 	// Función de selección del siguiente proceso

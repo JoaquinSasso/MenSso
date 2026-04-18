@@ -267,12 +267,14 @@ function UMLClassBox({
 	isRelSource,
 	onMouseDown,
 	onClick,
+	onEdit,
 }: {
 	cls: UMLClass;
 	isSelected: boolean;
 	isRelSource: boolean;
 	onMouseDown: (e: React.MouseEvent | React.TouchEvent) => void;
 	onClick: () => void;
+	onEdit: () => void;
 }) {
 	return (
 		<div
@@ -283,7 +285,7 @@ function UMLClassBox({
 						? "border-amber-400 shadow-amber-500/20"
 						: "border-slate-600 shadow-black/20"
 			}`}
-			style={{ left: cls.x, top: cls.y }}
+			style={{ left: cls.x, top: cls.y, zIndex: isSelected ? 10 : 1 }}
 			onMouseDown={onMouseDown}
 			onTouchStart={onMouseDown}
 			onClick={(e) => {
@@ -291,6 +293,19 @@ function UMLClassBox({
 				onClick();
 			}}
 		>
+			{/* Botón editar */}
+			<button
+				className="absolute -top-2.5 -right-2.5 w-6 h-6 flex items-center justify-center bg-slate-700 hover:bg-sky-600 border border-slate-600 hover:border-sky-500 rounded-full text-slate-400 hover:text-white transition-colors z-20 shadow-md"
+				onClick={(e) => {
+					e.stopPropagation();
+					onEdit();
+				}}
+				onMouseDown={(e) => e.stopPropagation()}
+				onTouchStart={(e) => e.stopPropagation()}
+				title={`Editar ${cls.name}`}
+			>
+				<Edit3 size={11} />
+			</button>
 			{/* Nombre */}
 			<div
 				className={`px-3 py-2 text-center font-bold text-sm border-b ${
@@ -355,8 +370,33 @@ function RelationLines({
 	relations: UMLRelation[];
 	classes: UMLClass[];
 }) {
-	function getCenter(cls: UMLClass): { x: number; y: number } {
-		return { x: cls.x + 80, y: cls.y + 40 };
+	// Estimar dimensiones de la caja UML
+	function getBox(cls: UMLClass) {
+		const w = 160;
+		const headerH = 36;
+		const attrH = Math.max(28, cls.attributes.length * 20 + 12);
+		const methH = Math.max(28, cls.methods.length * 20 + 12);
+		const h = headerH + attrH + methH;
+		return { x: cls.x, y: cls.y, w, h };
+	}
+
+	// Punto donde la línea centro→target intersecta el borde del rectángulo
+	function getEdgePoint(
+		box: { x: number; y: number; w: number; h: number },
+		target: { x: number; y: number },
+	): { x: number; y: number } {
+		const cx = box.x + box.w / 2;
+		const cy = box.y + box.h / 2;
+		const dx = target.x - cx;
+		const dy = target.y - cy;
+		if (dx === 0 && dy === 0) return { x: cx, y: cy };
+
+		const hw = box.w / 2;
+		const hh = box.h / 2;
+		const sx = hw / (Math.abs(dx) || 0.001);
+		const sy = hh / (Math.abs(dy) || 0.001);
+		const s = Math.min(sx, sy);
+		return { x: cx + dx * s, y: cy + dy * s };
 	}
 
 	function markerEnd(type: RelationType): string {
@@ -372,13 +412,22 @@ function RelationLines({
 		}
 	}
 
+	// Calcular dimensiones del SVG para cubrir todas las clases
+	const svgW =
+		classes.length > 0
+			? Math.max(...classes.map((c) => c.x + getBox(c).w + 40), 500)
+			: 500;
+	const svgH =
+		classes.length > 0
+			? Math.max(...classes.map((c) => c.y + getBox(c).h + 40), 500)
+			: 500;
+
 	return (
 		<svg
-			className="absolute inset-0 pointer-events-none w-full h-full"
-			style={{ zIndex: 0 }}
+			className="absolute top-0 left-0 pointer-events-none"
+			style={{ zIndex: 0, width: svgW, height: svgH }}
 		>
 			<defs>
-				{/* Herencia: triángulo vacío */}
 				<marker
 					id="arrowHerencia"
 					viewBox="0 0 12 12"
@@ -390,12 +439,11 @@ function RelationLines({
 				>
 					<path
 						d="M0,0 L12,6 L0,12 Z"
-						fill="none"
+						fill="#0f172a"
 						stroke="#38bdf8"
 						strokeWidth="1.5"
 					/>
 				</marker>
-				{/* Asociación: flecha simple */}
 				<marker
 					id="arrowAsoc"
 					viewBox="0 0 10 10"
@@ -412,7 +460,6 @@ function RelationLines({
 						strokeWidth="1.5"
 					/>
 				</marker>
-				{/* Agregación: rombo vacío */}
 				<marker
 					id="diamondOpen"
 					viewBox="0 0 16 10"
@@ -429,7 +476,6 @@ function RelationLines({
 						strokeWidth="1.5"
 					/>
 				</marker>
-				{/* Composición: rombo lleno */}
 				<marker
 					id="diamondFilled"
 					viewBox="0 0 16 10"
@@ -453,8 +499,13 @@ function RelationLines({
 				const target = classes.find((c) => c.id === rel.targetId);
 				if (!source || !target) return null;
 
-				const s = getCenter(source);
-				const t = getCenter(target);
+				const sBox = getBox(source);
+				const tBox = getBox(target);
+				const sCtr = { x: sBox.x + sBox.w / 2, y: sBox.y + sBox.h / 2 };
+				const tCtr = { x: tBox.x + tBox.w / 2, y: tBox.y + tBox.h / 2 };
+
+				const s = getEdgePoint(sBox, tCtr);
+				const t = getEdgePoint(tBox, sCtr);
 
 				return (
 					<g key={rel.id}>
@@ -466,15 +517,12 @@ function RelationLines({
 							stroke={REL_COLORS[rel.type]}
 							strokeWidth="2"
 							strokeDasharray={
-								rel.type === "asociacion"
+								rel.type === "asociacion" || rel.type === "herencia"
 									? "none"
-									: rel.type === "herencia"
-										? "none"
-										: "6,3"
+									: "6,3"
 							}
 							markerEnd={markerEnd(rel.type)}
 						/>
-						{/* Etiqueta de relación */}
 						<text
 							x={(s.x + t.x) / 2}
 							y={(s.y + t.y) / 2 - 8}
@@ -485,7 +533,6 @@ function RelationLines({
 						>
 							{REL_LABELS[rel.type]}
 						</text>
-						{/* Cardinalidades */}
 						{rel.sourceLabel && (
 							<text
 								x={s.x + (t.x - s.x) * 0.15}
@@ -592,151 +639,173 @@ function ClassEditor({
 		});
 	}
 
+	const mouseDownTarget = useRef<EventTarget | null>(null);
+
 	return (
-		<div className="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-4 max-h-[80vh] overflow-y-auto">
-			<div className="flex items-center justify-between">
-				<h3 className="font-bold text-sm">Editar Clase</h3>
-				<button onClick={onClose} className="text-slate-500 hover:text-white">
-					<X size={16} />
-				</button>
-			</div>
-
-			{/* Nombre */}
-			<div>
-				<label className="text-xs text-slate-400 block mb-1">
-					Nombre de la clase
-				</label>
-				<input
-					value={draft.name}
-					onChange={(e) =>
-						setDraft({
-							...draft,
-							name: e.target.value.replace(/[^a-zA-Z0-9_]/g, ""),
-						})
-					}
-					className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 font-mono text-sm focus:outline-none focus:border-sky-500"
-				/>
-			</div>
-
-			{/* Atributos */}
-			<div>
-				<div className="flex items-center justify-between mb-1">
-					<label className="text-xs text-slate-400">Atributos</label>
-					<button
-						onClick={addAttr}
-						className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1"
-					>
-						<Plus size={12} />
-						Agregar
+		<div
+			className="fixed inset-0 z-50 flex items-center justify-center p-4"
+			onMouseDown={(e) => {
+				mouseDownTarget.current = e.target;
+			}}
+			onClick={(e) => {
+				// Solo cerrar si mousedown Y mouseup fueron en el backdrop (no drag desde input)
+				if (
+					e.target === e.currentTarget &&
+					mouseDownTarget.current === e.currentTarget
+				)
+					onClose();
+				mouseDownTarget.current = null;
+			}}
+		>
+			{/* Backdrop */}
+			<div className="absolute inset-0 bg-black/60" />
+			{/* Modal */}
+			<div className="relative bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-4 max-h-[85vh] overflow-y-auto w-full max-w-md shadow-2xl">
+				<div className="flex items-center justify-between">
+					<h3 className="font-bold text-sm">Editar Clase</h3>
+					<button onClick={onClose} className="text-slate-500 hover:text-white">
+						<X size={16} />
 					</button>
 				</div>
-				<div className="space-y-1.5">
-					{draft.attributes.map((a) => (
-						<div key={a.id} className="flex gap-1 items-center">
-							<select
-								value={a.visibility}
-								onChange={(e) => updateAttr(a.id, "visibility", e.target.value)}
-								className="bg-slate-950 border border-slate-700 rounded px-1 py-1 text-xs w-12 focus:outline-none"
-							>
-								<option value="+">+</option>
-								<option value="-">−</option>
-								<option value="#">#</option>
-							</select>
-							<input
-								value={a.name}
-								onChange={(e) => updateAttr(a.id, "name", e.target.value)}
-								placeholder="nombre"
-								className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
-							/>
-							<input
-								value={a.type}
-								onChange={(e) => updateAttr(a.id, "type", e.target.value)}
-								placeholder="tipo"
-								className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
-							/>
-							<button
-								onClick={() => removeAttr(a.id)}
-								className="text-slate-600 hover:text-red-400"
-							>
-								<Trash2 size={12} />
-							</button>
-						</div>
-					))}
-				</div>
-			</div>
 
-			{/* Métodos */}
-			<div>
-				<div className="flex items-center justify-between mb-1">
-					<label className="text-xs text-slate-400">Métodos</label>
+				{/* Nombre */}
+				<div>
+					<label className="text-xs text-slate-400 block mb-1">
+						Nombre de la clase
+					</label>
+					<input
+						value={draft.name}
+						onChange={(e) =>
+							setDraft({
+								...draft,
+								name: e.target.value.replace(/[^a-zA-Z0-9_]/g, ""),
+							})
+						}
+						className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 font-mono text-sm focus:outline-none focus:border-sky-500"
+					/>
+				</div>
+
+				{/* Atributos */}
+				<div>
+					<div className="flex items-center justify-between mb-1">
+						<label className="text-xs text-slate-400">Atributos</label>
+						<button
+							onClick={addAttr}
+							className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1"
+						>
+							<Plus size={12} />
+							Agregar
+						</button>
+					</div>
+					<div className="space-y-1.5">
+						{draft.attributes.map((a) => (
+							<div key={a.id} className="flex gap-1 items-center">
+								<select
+									value={a.visibility}
+									onChange={(e) =>
+										updateAttr(a.id, "visibility", e.target.value)
+									}
+									className="bg-slate-950 border border-slate-700 rounded px-1 py-1 text-xs w-12 focus:outline-none"
+								>
+									<option value="+">+</option>
+									<option value="-">−</option>
+									<option value="#">#</option>
+								</select>
+								<input
+									value={a.name}
+									onChange={(e) => updateAttr(a.id, "name", e.target.value)}
+									placeholder="nombre"
+									className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
+								/>
+								<input
+									value={a.type}
+									onChange={(e) => updateAttr(a.id, "type", e.target.value)}
+									placeholder="tipo"
+									className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
+								/>
+								<button
+									onClick={() => removeAttr(a.id)}
+									className="text-slate-600 hover:text-red-400"
+								>
+									<Trash2 size={12} />
+								</button>
+							</div>
+						))}
+					</div>
+				</div>
+
+				{/* Métodos */}
+				<div>
+					<div className="flex items-center justify-between mb-1">
+						<label className="text-xs text-slate-400">Métodos</label>
+						<button
+							onClick={addMethod}
+							className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1"
+						>
+							<Plus size={12} />
+							Agregar
+						</button>
+					</div>
+					<div className="space-y-1.5">
+						{draft.methods.map((m) => (
+							<div key={m.id} className="flex gap-1 items-center">
+								<select
+									value={m.visibility}
+									onChange={(e) =>
+										updateMethod(m.id, "visibility", e.target.value)
+									}
+									className="bg-slate-950 border border-slate-700 rounded px-1 py-1 text-xs w-12 focus:outline-none"
+								>
+									<option value="+">+</option>
+									<option value="-">−</option>
+									<option value="#">#</option>
+								</select>
+								<input
+									value={m.name}
+									onChange={(e) => updateMethod(m.id, "name", e.target.value)}
+									placeholder="nombre"
+									className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
+								/>
+								<input
+									value={m.params}
+									onChange={(e) => updateMethod(m.id, "params", e.target.value)}
+									placeholder="params"
+									className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
+								/>
+								<input
+									value={m.returnType}
+									onChange={(e) =>
+										updateMethod(m.id, "returnType", e.target.value)
+									}
+									placeholder="retorno"
+									className="w-14 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
+								/>
+								<button
+									onClick={() => removeMethod(m.id)}
+									className="text-slate-600 hover:text-red-400"
+								>
+									<Trash2 size={12} />
+								</button>
+							</div>
+						))}
+					</div>
+				</div>
+
+				<div className="flex gap-2 pt-2 border-t border-slate-800">
 					<button
-						onClick={addMethod}
-						className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1"
+						onClick={save}
+						className="flex-1 flex items-center justify-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-sm py-1.5 rounded-lg transition-colors"
 					>
-						<Plus size={12} />
-						Agregar
+						<Check size={14} />
+						Guardar
+					</button>
+					<button
+						onClick={onDelete}
+						className="flex items-center justify-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-sm py-1.5 px-3 rounded-lg transition-colors"
+					>
+						<Trash2 size={14} />
 					</button>
 				</div>
-				<div className="space-y-1.5">
-					{draft.methods.map((m) => (
-						<div key={m.id} className="flex gap-1 items-center">
-							<select
-								value={m.visibility}
-								onChange={(e) =>
-									updateMethod(m.id, "visibility", e.target.value)
-								}
-								className="bg-slate-950 border border-slate-700 rounded px-1 py-1 text-xs w-12 focus:outline-none"
-							>
-								<option value="+">+</option>
-								<option value="-">−</option>
-								<option value="#">#</option>
-							</select>
-							<input
-								value={m.name}
-								onChange={(e) => updateMethod(m.id, "name", e.target.value)}
-								placeholder="nombre"
-								className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
-							/>
-							<input
-								value={m.params}
-								onChange={(e) => updateMethod(m.id, "params", e.target.value)}
-								placeholder="params"
-								className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
-							/>
-							<input
-								value={m.returnType}
-								onChange={(e) =>
-									updateMethod(m.id, "returnType", e.target.value)
-								}
-								placeholder="retorno"
-								className="w-14 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-500"
-							/>
-							<button
-								onClick={() => removeMethod(m.id)}
-								className="text-slate-600 hover:text-red-400"
-							>
-								<Trash2 size={12} />
-							</button>
-						</div>
-					))}
-				</div>
-			</div>
-
-			{/* Botones */}
-			<div className="flex gap-2 pt-2 border-t border-slate-800">
-				<button
-					onClick={save}
-					className="flex-1 flex items-center justify-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-sm py-1.5 rounded-lg transition-colors"
-				>
-					<Check size={14} />
-					Guardar
-				</button>
-				<button
-					onClick={onDelete}
-					className="flex items-center justify-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-sm py-1.5 px-3 rounded-lg transition-colors"
-				>
-					<Trash2 size={14} />
-				</button>
 			</div>
 		</div>
 	);
@@ -829,15 +898,14 @@ export default function DiagramaClases() {
 
 			function onMove(ev: MouseEvent | TouchEvent) {
 				if (!dragRef.current || !canvasRef.current) return;
+				const dragId = dragRef.current.id;
 				const cx = "touches" in ev ? ev.touches[0].clientX : ev.clientX;
 				const cy = "touches" in ev ? ev.touches[0].clientY : ev.clientY;
 				const r = canvasRef.current.getBoundingClientRect();
 				const newX = Math.max(0, cx - r.left - dragRef.current.offsetX);
 				const newY = Math.max(0, cy - r.top - dragRef.current.offsetY);
 				setClasses((prev) =>
-					prev.map((c) =>
-						c.id === dragRef.current!.id ? { ...c, x: newX, y: newY } : c,
-					),
+					prev.map((c) => (c.id === dragId ? { ...c, x: newX, y: newY } : c)),
 				);
 			}
 
@@ -939,7 +1007,6 @@ export default function DiagramaClases() {
 		});
 	}
 
-	const selectedClass = classes.find((c) => c.id === selectedId);
 	const editingClass = classes.find((c) => c.id === editingId);
 
 	return (
@@ -1049,10 +1116,37 @@ export default function DiagramaClases() {
 							}
 						}}
 					>
+						{/* Spacer invisible para que el scroll cubra todas las clases */}
+						<div
+							style={{
+								width:
+									classes.length > 0
+										? Math.max(...classes.map((c) => c.x + 200)) + 40
+										: 0,
+								height:
+									classes.length > 0
+										? Math.max(...classes.map((c) => c.y + 150)) + 40
+										: 0,
+								minWidth: "100%",
+								minHeight: "100%",
+								pointerEvents: "none",
+							}}
+						/>
+
 						{/* Grid de fondo */}
 						<div
-							className="absolute inset-0 opacity-10"
+							className="absolute top-0 left-0 opacity-10"
 							style={{
+								width:
+									classes.length > 0
+										? Math.max(...classes.map((c) => c.x + 200)) + 40
+										: "100%",
+								height:
+									classes.length > 0
+										? Math.max(...classes.map((c) => c.y + 150)) + 40
+										: "100%",
+								minWidth: "100%",
+								minHeight: "100%",
 								backgroundImage:
 									"radial-gradient(circle, #475569 1px, transparent 1px)",
 								backgroundSize: "24px 24px",
@@ -1071,6 +1165,7 @@ export default function DiagramaClases() {
 								isRelSource={relSource === cls.id}
 								onMouseDown={(e) => handleDragStart(cls, e)}
 								onClick={() => handleClassClick(cls)}
+								onEdit={() => setEditingId(cls.id)}
 							/>
 						))}
 
@@ -1081,42 +1176,6 @@ export default function DiagramaClases() {
 							</div>
 						)}
 					</div>
-
-					{/* Acciones sobre clase seleccionada */}
-					{selectedClass && mode === "select" && !editingId && (
-						<div className="flex gap-2 mt-2">
-							<button
-								onClick={() => setEditingId(selectedClass.id)}
-								className="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg"
-							>
-								<Edit3 size={12} />
-								Editar {selectedClass.name}
-							</button>
-							<button
-								onClick={() => deleteClass(selectedClass.id)}
-								className="flex items-center gap-1.5 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg"
-							>
-								<Trash2 size={12} />
-								Eliminar
-							</button>
-						</div>
-					)}
-
-					{/* Editor de clase */}
-					{editingClass && (
-						<div className="mt-2">
-							<ClassEditor
-								cls={editingClass}
-								onUpdate={(updated) =>
-									setClasses(
-										classes.map((c) => (c.id === updated.id ? updated : c)),
-									)
-								}
-								onDelete={() => deleteClass(editingClass.id)}
-								onClose={() => setEditingId(null)}
-							/>
-						</div>
-					)}
 
 					{/* Lista de relaciones */}
 					{relations.length > 0 && (
@@ -1176,6 +1235,18 @@ export default function DiagramaClases() {
 					</div>
 				</div>
 			</div>
+
+			{/* Modal flotante de edición */}
+			{editingClass && (
+				<ClassEditor
+					cls={editingClass}
+					onUpdate={(updated) =>
+						setClasses(classes.map((c) => (c.id === updated.id ? updated : c)))
+					}
+					onDelete={() => deleteClass(editingClass.id)}
+					onClose={() => setEditingId(null)}
+				/>
+			)}
 		</div>
 	);
 }
