@@ -12,6 +12,7 @@ import {
     ListOrdered,
     BoxSelect,
 	Layers,
+	FileText,
 } from "lucide-react";
 
 interface ToolCard {
@@ -103,6 +104,14 @@ const tools: ToolCard[] = [
         path: "/EDA/simuladorEDA",
         category: "Estructuras de Datos y Algoritmos",
         color: "text-orange-400",
+    },
+    {
+        title: "DocuGen AI",
+        description: "Asistente de redacción institucional que genera notas formales (prórrogas, mesas especiales) guiado por IA.",
+        icon: FileText,
+        path: "/docugen",
+        category: "Inteligencia Artificial",
+        color: "text-cyan-400",
     },
 ];
 
