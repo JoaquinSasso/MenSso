@@ -8,6 +8,7 @@ import PlanificadorCPU from "./pages/so/PlanificadorCPU";
 import SimuladorArreglos from "./pages/AyRP/SimuladorArreglos";
 import Compilador from "./pages/AyRP/compilador";
 import DiagramaClases from "./pages/poo/DiagramaClases";
+import DocuGen from "./pages/ia/DocuGen";
 
 
 
@@ -41,7 +42,10 @@ function App() {
                     {/* Programacion orientada a objetos */}
                     <Route path="poo/diagrama-clases" element={<DiagramaClases />} />
 
-                   
+                    {/* Inteligencia Artificial */}
+                    <Route path="docugen" element={<DocuGen />} />
+
+
 
                     {/* IMPORTANTE: La ruta comodín siempre al final de la lista */}
                     <Route path="*" element={<Hub />} />
