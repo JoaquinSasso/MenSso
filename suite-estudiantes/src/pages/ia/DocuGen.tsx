@@ -132,7 +132,7 @@ function extractGuaranteedJSON(text: string): string {
 }
 
 // --- Descarga PDF usando iframe oculto con estilos de impresión ---
-function downloadAsPDF(content: string, fecha: string) {
+function downloadAsPDF(content: string, _fecha: string) {
 	const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head>

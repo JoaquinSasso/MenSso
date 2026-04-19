@@ -56,11 +56,6 @@ interface UMLRelation {
 	targetLabel: string;
 }
 
-const VIS_LABELS: Record<Visibility, string> = {
-	"+": "Público",
-	"-": "Privado",
-	"#": "Protegido",
-};
 const VIS_PREFIX: Record<Visibility, string> = { "+": "+", "-": "−", "#": "#" };
 
 const REL_LABELS: Record<RelationType, string> = {
