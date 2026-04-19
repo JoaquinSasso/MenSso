@@ -38,7 +38,7 @@ const tools: ToolCard[] = [
 			"Calculá subredes, máscaras, direcciones de broadcast y rangos de hosts con explicaciones.",
 		icon: Calculator,
 		path: "/redes/subneteo",
-		category: "Redes de Datos",
+		category: "Redes",
 		color: "text-indigo-400",
 	},
 	{
@@ -60,9 +60,9 @@ const tools: ToolCard[] = [
 		color: "text-rose-400",
 	},
 	{
-		title: "Compilador",
+		title: "Compilador de Pseudocódigo",
 		description:
-			"Simula el proceso de compilación de un programa fuente a código objeto.",
+			"Simula el proceso de compilación de un algoritmo y analiza el mapa de memoria.",
 		icon: Camera,
 		path: "/AyRP/compilador",
 		category: "Algoritmos y Resolución de Problemas",
@@ -108,7 +108,7 @@ export default function Hub() {
 						to={tool.path}
 						className={`group relative p-6 border rounded-2xl transition-all duration-300 overflow-hidden ${
 							tool.featured
-								? "bg-gradient-to-br from-cyan-950/40 to-slate-900/50 border-cyan-500/50 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] md:col-span-2 lg:col-span-2"
+								? "bg-linear-to-br from-cyan-950/40 to-slate-900/50 border-cyan-500/50 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] md:col-span-2 lg:col-span-2"
 								: "bg-slate-900/50 border-slate-800 hover:border-sky-500/50 hover:bg-slate-800/50"
 						}`}
 					>
