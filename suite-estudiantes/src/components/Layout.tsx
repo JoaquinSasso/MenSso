@@ -24,7 +24,11 @@ export default function Layout() {
 						>
 							Herramientas
 						</Link>
-						<a href="https://github.com" target="_blank" rel="noreferrer">
+						<a
+							href="https://github.com/JoaquinSasso/MenSso"
+							target="_blank"
+							rel="noreferrer"
+						>
 							<Github className="w-5 h-5 text-slate-400 hover:text-white transition-colors" />
 						</a>
 					</div>
