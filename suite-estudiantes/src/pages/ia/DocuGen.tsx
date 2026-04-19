@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
     Bot,
     Send,
@@ -23,94 +24,108 @@ interface AIResponse {
     document_content: string | null;
 }
 
+// Capturamos la fecha real del sistema del usuario
+const fechaHoy = new Date().toLocaleDateString("es-AR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+});
+
 // --- System Prompt (para integración real con OpenAI/Gemini) ---
-const SYSTEM_PROMPT = `Actúa como el Asistente Administrativo experto de una Universidad Nacional en Argentina. Tu trabajo es guiar a los estudiantes para redactar notas formales (ej. prórrogas, mesas especiales). Haz preguntas cortas y amables de a una por vez para obtener: Nombre, DNI, Destinatario y Motivo.
-Cuando tengas todos los datos, tu respuesta debe ser en formato JSON con dos propiedades:
-1. "chat_message": Un mensaje avisando que la nota está lista.
-2. "document_content": El texto completo de la nota. La nota DEBE comenzar con "San Juan, [Fecha]" alineado a la derecha, seguido del destinatario. Usa lenguaje institucional. Termina con "Atentamente," y espacio para firma y aclaración.
-Mientras falten datos, "document_content" debe ser null.`;
+const SYSTEM_PROMPT = `Actúa como el Asistente Administrativo experto de una Universidad Nacional en Argentina. Tu trabajo es guiar a los estudiantes para redactar notas formales (ej. prórrogas, mesas especiales). Haz preguntas cortas y amables de a una por vez para obtener ÚNICAMENTE estos 5 datos: Nombre, DNI, Registro, Destinatario y Motivo.
 
-// --- Simulador de IA (mock) ---
-// Flujo simplificado por turnos: pregunta nombre -> DNI -> destinatario -> motivo -> genera nota.
-async function simulateAIResponse(
-    userText: string,
-    history: Message[]
+REGLA ESTRICTA DE FORMATO: TODAS tus respuestas, desde ahora y para siempre, DEBEN ser un objeto JSON válido con exactamente estas dos propiedades:
+1. "chat_message": (string) El texto que le envías al usuario en el chat.
+2. "document_content": (string o null) El texto completo de la nota administrativa terminada, o null si todavía estás haciendo preguntas.
+
+REGLA DE ENTREGA (CONTENEDOR HERMÉTICO): 
+Para evitar que tus procesos de pensamiento interfieran con el sistema, tu respuesta final DEBE estar envuelta exactamente entre las etiquetas <OUTPUT> y </OUTPUT>. 
+Ejemplo exacto de cómo debes responder al final:
+<OUTPUT>
+{
+  "chat_message": "Tu mensaje aquí...",
+  "document_content": "El documento completo aquí..."
+}
+</OUTPUT>
+
+REGLA DE CONTENIDO Y ANTI-PEREZA (LAZY GENERATION): 
+Está ESTRICTAMENTE PROHIBIDO resumir el texto, usar abreviaciones o colocar puntos suspensivos ("..."). Debes generar y devolver el contenido COMPLETO de la nota en "document_content" y el mensaje COMPLETO en "chat_message" en cada respuesta. Usa EXCLUSIVAMENTE los datos provistos por el usuario. ESTÁ ESTRICTAMENTE PROHIBIDO inventar datos extra, pedir número de legajo, carrera, o dejar espacios en blanco con corchetes como "[ESPACIO PARA LEGAJO]" o "[Completar]". Si un dato secundario no fue pedido, simplemente omítelo en la redacción de la nota.
+
+Formato de la nota: Cuando llenes "document_content", la nota DEBE comenzar estrictamente con "San Juan, ${fechaHoy}" alineado a la derecha, seguido del destinatario. Usa lenguaje institucional. Termina con "Atentamente," y espacio para firma y aclaración.`;
+
+// Inicializamos la IA (usa la variable de entorno)
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({
+	model: "gemma-4-31b-it",
+	systemInstruction: SYSTEM_PROMPT,
+	generationConfig: { responseMimeType: "application/json" },
+});
+
+async function getGeminiResponse(
+	userText: string,
+	history: Message[],
 ): Promise<AIResponse> {
-    const delay = 700 + Math.random() * 600;
-    await new Promise((res) => setTimeout(res, delay));
+	try {
+		let chatHistory = history.map((m) => ({
+			role: m.role === "user" ? "user" : "model",
+			parts: [{ text: m.text }],
+		}));
 
-    // Cuántos turnos del usuario llevamos (incluyendo el actual)
-    const userTurns = history.filter((m) => m.role === "user").length + 1;
+		while (chatHistory.length > 0 && chatHistory[0].role === "model") {
+			chatHistory.shift();
+		}
 
-    // Tomamos los textos del usuario en orden para "recordar" datos previos
-    const userMessages = [
-        ...history.filter((m) => m.role === "user").map((m) => m.text),
-        userText,
-    ];
+		const chat = model.startChat({
+			history: chatHistory,
+		});
 
-    switch (userTurns) {
-        case 1:
-            return {
-                chat_message:
-                    "¡Hola! 👋 Soy DocuGen, tu asistente para redactar notas formales. Para empezar, ¿podrías decirme tu nombre completo?",
-                document_content: null,
-            };
-        case 2:
-            return {
-                chat_message: `Un gusto, ${userText}. Ahora necesito tu DNI (sin puntos, por favor).`,
-                document_content: null,
-            };
-        case 3:
-            return {
-                chat_message:
-                    "Perfecto. ¿A quién va dirigida la nota? (ej. Sr. Decano, Departamento de Alumnos, Cátedra de Algoritmos...)",
-                document_content: null,
-            };
-        case 4:
-            return {
-                chat_message:
-                    "Muy bien. Por último, contame brevemente el motivo de la nota (ej. solicitar prórroga de examen, mesa especial, etc.).",
-                document_content: null,
-            };
-        default: {
-            const [nombre, dni, destinatario, motivo] = userMessages;
-            const fecha = new Date().toLocaleDateString("es-AR", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-            });
+		const result = await chat.sendMessage(userText);
+		let responseText = result.response.text();
 
-            const documento = `                                                                San Juan, ${fecha}
+        responseText = extractGuaranteedJSON(responseText);
+        responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        console.log("Respuesta cruda de Gemini:", result.response.text());
+		const parsedData = JSON.parse(responseText);
+        console.log("Respuesta parseada de Gemini:", parsedData);
 
-${destinatario ?? ""}
-S               /               D
-
-        De mi mayor consideración:
-
-        Me dirijo a Usted, y por su intermedio a quien corresponda, con el fin de ${motivo ?? ""}.
-
-        Por lo expuesto, solicito tenga a bien considerar la presente solicitud, comprometiéndome a cumplir con los requisitos administrativos y académicos que se estimen pertinentes.
-
-        Sin otro particular, y a la espera de una respuesta favorable, saluda a Usted atentamente.
-
-
-
-                                                                    ............................
-                                                                            Firma
-
-                                                                    ${nombre ?? ""}
-                                                                    DNI: ${dni ?? ""}
-`;
-
-            return {
-                chat_message:
-                    "¡Listo! 📄 Generé tu nota en el panel de la derecha. Podés copiar el texto o descargarlo. Si querés hacer algún ajuste, decime qué cambiar.",
-                document_content: documento,
-            };
-        }
-    }
+		return {
+			chat_message:
+				parsedData.chat_message ||
+				parsedData.text ||
+				parsedData.mensaje ||
+				"Recibido. Sigamos.",
+			document_content: parsedData.document_content || null,
+		} as AIResponse;
+	} catch (error) {
+		console.error("🔴 ERROR DETALLADO DE GEMINI:", error);
+		throw error;
+	}
 }
 
+
+function extractGuaranteedJSON(text: string): string {
+    const startTag = "<OUTPUT>";
+    const endTag = "</OUTPUT>";
+    
+    // EL CAMBIO MÁGICO: Usamos lastIndexOf en lugar de indexOf
+    const startIndex = text.lastIndexOf(startTag);
+    const endIndex = text.lastIndexOf(endTag);
+    
+    if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
+        // Recortamos exactamente lo que hay entre las etiquetas finales
+        const jsonString = text.substring(startIndex + startTag.length, endIndex).trim();
+        return jsonString;
+    }
+    
+    // Fallback de emergencia
+    const fallbackStart = text.indexOf('{');
+    const fallbackEnd = text.lastIndexOf('}');
+    if (fallbackStart !== -1 && fallbackEnd !== -1) {
+         return text.substring(fallbackStart, fallbackEnd + 1);
+    }
+
+    throw new Error("No se pudo extraer un JSON válido de la respuesta.");
+}
 // --- Componente principal ---
 export default function DocuGen() {
     const [messages, setMessages] = useState<Message[]>([
@@ -143,27 +158,49 @@ export default function DocuGen() {
         setMessages((prev) => [...prev, userMsg]);
         setInput("");
         setIsLoading(true);
-
         try {
-            const response = await simulateAIResponse(text, historySnapshot);
-            setMessages((prev) => [
-                ...prev,
-                { role: "assistant", text: response.chat_message },
-            ]);
-            if (response.document_content !== null) {
-                setDocumentContent(response.document_content);
-            }
-        } catch (err) {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    role: "assistant",
-                    text: "Uy, algo falló al procesar tu mensaje. Probá de nuevo.",
-                },
-            ]);
-        } finally {
-            setIsLoading(false);
-        }
+					console.log("1. Iniciando llamada...");
+					console.log(
+						"2. API Key configurada:",
+						import.meta.env.VITE_GEMINI_API_KEY ? "SÍ" : "NO",
+					);
+
+					// Asegurate de que acá diga getGeminiResponse y no simulateAIResponse
+					const response = await getGeminiResponse(text, historySnapshot);
+
+					setMessages((prev) => [
+						...prev,
+						{ role: "assistant", text: response.chat_message },
+					]);
+					if (response.document_content !== null) {
+						setDocumentContent(response.document_content);
+					}
+				} catch (err: any) {
+					console.error("🔴 EL ERROR REAL DENTRO DE HANDLESEND ES:", err);
+
+					// Mensaje por defecto si se rompe algo nuestro
+					let mensajeError =
+						"Uy, algo falló al procesar tu mensaje. Probá de nuevo.";
+
+					// Si el error viene de Google y menciona "503" o "high demand"
+					if (
+						err.message &&
+						(err.message.includes("503") || err.message.includes("high demand"))
+					) {
+						mensajeError =
+							"⏳ Los servidores de Google Gemini están experimentando mucha demanda en este momento. Por favor, esperá unos segundos y volvé a intentar.";
+					}
+
+					setMessages((prev) => [
+						...prev,
+						{
+							role: "assistant",
+							text: mensajeError,
+						},
+					]);
+				} finally {
+					setIsLoading(false);
+				}
     }, [input, isLoading, messages]);
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
