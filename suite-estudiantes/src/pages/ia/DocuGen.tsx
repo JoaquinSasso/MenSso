@@ -6,7 +6,7 @@ import {
 	type KeyboardEvent,
 } from "react";
 import { Link } from "react-router-dom";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import {
 	Bot,
 	Send,
@@ -55,44 +55,63 @@ Ejemplo exacto de cómo debes responder al final:
 </OUTPUT>
 
 REGLA DE CONTENIDO Y ANTI-PEREZA (LAZY GENERATION): 
-Está ESTRICTAMENTE PROHIBIDO resumir el texto, usar abreviaciones o colocar puntos suspensivos ("..."). Debes generar y devolver el contenido COMPLETO de la nota en "document_content" y el mensaje COMPLETO en "chat_message" en cada respuesta. Usa EXCLUSIVAMENTE los datos provistos por el usuario. ESTÁ ESTRICTAMENTE PROHIBIDO inventar datos extra, pedir número de legajo, carrera, o dejar espacios en blanco con corchetes como "[ESPACIO PARA LEGAJO]" o "[Completar]". Si un dato secundario no fue pedido, simplemente omítelo en la redacción de la nota.
+Está ESTRICTAMENTE PROHIBIDO resumir el texto, usar abreviaciones o colocar puntos suspensivos ("..."). Debes generar y devolver el contenido COMPLETO de la nota en "document_content" y el mensaje COMPLETO en "chat_message" en cada respuesta. Usa EXCLUSIVAMENTE los datos provistos por el usuario. ESTÁ ESTRICTAMENTE PROHIBIDO inventar datos extra, o dejar espacios en blanco con corchetes como "[ESPACIO PARA LEGAJO]" o "[Completar]". Si un dato secundario no fue pedido, simplemente omítelo en la redacción de la nota.
 
-Formato de la nota: Cuando llenes "document_content", la nota DEBE comenzar estrictamente con "San Juan, ${fechaHoy}" alineado a la derecha, seguido del destinatario. Usa lenguaje institucional. Termina con "Atentamente," y espacio para firma y aclaración.`;
+Formato de la nota: Cuando llenes "document_content", la nota DEBE comenzar estrictamente con "San Juan, ${fechaHoy}" alineado a la derecha, seguido del destinatario. Usa lenguaje institucional y formal. Termina con "Atentamente," y espacio para firma y aclaración, agrega una linea para firmar.`;
 
-// Inicializamos la IA
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-	model: "gemma-4-31b-it",
-	systemInstruction: SYSTEM_PROMPT,
-	generationConfig: { responseMimeType: "application/json" },
+// Inicializamos la IA de Groq
+// Nota: dangerouslyAllowBrowser es necesario porque estamos llamando a la API desde el front (React)
+const groq = new Groq({
+	apiKey: import.meta.env.VITE_GROQ_API_KEY,
+	dangerouslyAllowBrowser: true 
 });
 
-async function getGeminiResponse(
+async function getGroqResponse(
 	userText: string,
 	history: Message[],
 ): Promise<AIResponse> {
 	try {
-		let chatHistory = history.map((m) => ({
-			role: m.role === "user" ? "user" : "model",
-			parts: [{ text: m.text }],
-		}));
+		// 1. Armamos el historial FORZANDO a que el modelo crea que sus respuestas
+		// anteriores ya tenían formato JSON. Si le pasamos texto plano, responde texto plano.
+		const chatHistory: any[] = history.map((m) => {
+			if (m.role === "assistant") {
+				// Envolvemos sus mensajes previos en la estructura JSON esperada
+				return {
+					role: "assistant",
+					content: JSON.stringify({
+						chat_message: m.text,
+						document_content: null,
+					}),
+				};
+			}
+			// El usuario se queda igual
+			return { role: m.role, content: m.text };
+		});
 
-		while (chatHistory.length > 0 && chatHistory[0].role === "model") {
-			chatHistory.shift();
-		}
+		// 2. Insertamos el System Prompt al principio
+		chatHistory.unshift({ role: "system", content: SYSTEM_PROMPT });
 
-		const chat = model.startChat({ history: chatHistory });
-		const result = await chat.sendMessage(userText);
-		let responseText = result.response.text();
+		// 3. Agregamos el mensaje actual del usuario
+		chatHistory.push({ role: "user", content: userText });
 
+		// 4. Hacemos la llamada con response_format en json_object
+		const completion = await groq.chat.completions.create({
+			messages: chatHistory,
+			model: "llama-3.3-70b-versatile",
+			temperature: 0.1,
+			// ESTO ES CLAVE: Obliga a Groq a devolver una estructura JSON parseable
+			response_format: { type: "json_object" },
+		});
+
+		let responseText = completion.choices[0]?.message?.content || "";
+		console.log("Respuesta cruda de Groq:", responseText);
+
+		// Como ahora exigimos json_object, la respuesta ya es un JSON puro.
+		// Pasamos por tu función que tiene el fallback indexOf("{") para extraerlo limpio.
 		responseText = extractGuaranteedJSON(responseText);
-		responseText = responseText
-			.replace(/```json/g, "")
-			.replace(/```/g, "")
-			.trim();
-		console.log("Respuesta cruda de Gemini:", result.response.text());
+
 		const parsedData = JSON.parse(responseText);
-		console.log("Respuesta parseada de Gemini:", parsedData);
+		console.log("Respuesta parseada de Groq:", parsedData);
 
 		return {
 			chat_message:
@@ -103,7 +122,7 @@ async function getGeminiResponse(
 			document_content: parsedData.document_content || null,
 		} as AIResponse;
 	} catch (error) {
-		console.error("🔴 ERROR DETALLADO DE GEMINI:", error);
+		console.error("🔴 ERROR DETALLADO DE GROQ:", error);
 		throw error;
 	}
 }
@@ -249,10 +268,10 @@ export default function DocuGen() {
 			console.log("1. Iniciando llamada...");
 			console.log(
 				"2. API Key configurada:",
-				import.meta.env.VITE_GEMINI_API_KEY ? "SÍ" : "NO",
+				import.meta.env.VITE_GROQ_API_KEY ? "SÍ" : "NO",
 			);
 
-			const response = await getGeminiResponse(text, historySnapshot);
+			const response = await getGroqResponse(text, historySnapshot);
 
 			setMessages((prev) => [
 				...prev,
