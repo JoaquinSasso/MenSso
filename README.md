@@ -13,15 +13,16 @@
 ## 🚀 Herramientas Destacadas
 
 ### 🤖 DocuGen AI
-![Demo de MenSso](Media\DocuGen.gif) 
+<img src="Media\DocuGen.gif" alt="Demo de DocuGen AI" />
+
 Un asistente virtual impulsado por Inteligencia Artificial (LLM) que actúa como secretario académico. Guía al estudiante paso a paso para recopilar sus datos y genera automáticamente notas institucionales formales (prórrogas, mesas especiales) listas para imprimir o enviar.
 
 ### ⚙️ Planificador de CPU
-![Demo de MenSso](Media\PlanificadorCPU.gif)
+<img src="Media\PlanificadorCPU.gif" alt="Demo de Planificador de CPU" />
 Simulador interactivo de algoritmos de planificación de sistemas operativos (SJF, Round Robin, FIFO, etc.). Permite ingresar ráfagas de procesos en tiempo real y genera dinámicamente el **Diagrama de Gantt** correspondiente, ideal para comprobar ejercicios de la cátedra.
 
 ### 📊 Simulador de Arreglos
-![Demo de MenSso](Media\SimuladorArreglo.gif)
+<img src="Media\SimuladorArreglo.gif" alt="Demo de Simulador de Arreglos" />
 Herramienta visual para el aprendizaje de estructuras de datos. Permite ejecutar y visualizar paso a paso cómo funcionan los algoritmos clásicos de búsqueda y ordenamiento sobre un arreglo de memoria, facilitando la comprensión lógica detrás del código.
 
 *(La suite incluye además herramientas de subneteo IPv4, conversor de bases, compilador de pseudocódigo con mapa de memoria y diagramado UML a Python).*
