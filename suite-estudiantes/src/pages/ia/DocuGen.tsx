@@ -54,10 +54,18 @@ Ejemplo exacto de cómo debes responder al final:
 }
 </OUTPUT>
 
-REGLA DE CONTENIDO Y ANTI-PEREZA (LAZY GENERATION): 
-Está ESTRICTAMENTE PROHIBIDO resumir el texto, usar abreviaciones o colocar puntos suspensivos ("..."). Debes generar y devolver el contenido COMPLETO de la nota en "document_content" y el mensaje COMPLETO en "chat_message" en cada respuesta. Usa EXCLUSIVAMENTE los datos provistos por el usuario. ESTÁ ESTRICTAMENTE PROHIBIDO inventar datos extra, o dejar espacios en blanco con corchetes como "[ESPACIO PARA LEGAJO]" o "[Completar]". Si un dato secundario no fue pedido, simplemente omítelo en la redacción de la nota.
+REGLA DE CONTENIDO Y ANTI-PEREZA: 
+Está ESTRICTAMENTE PROHIBIDO resumir el texto o dejar espacios en blanco con corchetes (ej. "[Completar]"). Debes generar el contenido COMPLETO de la nota en "document_content". Usa EXCLUSIVAMENTE los datos provistos. Si un dato no fue pedido, omítelo. 
 
-Formato de la nota: Cuando llenes "document_content", la nota DEBE comenzar estrictamente con "San Juan, ${fechaHoy}" alineado a la derecha, seguido del destinatario. Usa lenguaje institucional y formal. Termina con "Atentamente," y espacio para firma y aclaración, agrega una linea para firmar.`;
+ESTRUCTURA Y REDACCIÓN DEL DOCUMENTO (MUY IMPORTANTE):
+Para que la nota tenga peso institucional y no se vea escueta, TIENES PROHIBIDO hacer listas con los datos del alumno (como "Nombre: X"). Debes redactar todo en prosa continua y directa, siguiendo estrictamente esta estructura:
+
+1. Lugar y fecha: "San Juan, ${fechaHoy}" (alineado a la derecha).
+2. Destinatario: Cargo o nombre provisto.
+3. Apertura (Párrafo 1): Integra los datos en prosa. Ejemplo obligado: "Tengo el agrado de dirigirme a usted, y por su intermedio a quien corresponda, el/la que suscribe, [Nombre], DNI N° [DNI], estudiante con número de registro [Registro], con el fin de..."
+4. Desarrollo (Párrafo 2): Explica el motivo de forma clara, detallada y respetuosa, expandiendo ligeramente la intención del estudiante para que la solicitud quede bien fundamentada.
+5. Cierre (Párrafo 3): "Sin otro particular y a la espera de una resolución favorable, lo saludo con atenta consideración."
+6. Firma: Deja tres líneas en blanco, seguidas de "Firma:", otra línea para "Aclaración:" y otra para "DNI:".`;
 
 // Inicializamos la IA de Groq
 // Nota: dangerouslyAllowBrowser es necesario porque estamos llamando a la API desde el front (React)
